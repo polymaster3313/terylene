@@ -35,7 +35,7 @@ Terylene is a modified version of the previous mirai botnet using golang instead
 
 
 # Debian based Setup
-// Ubuntu , Debian , Kali, Parrot OS
+> Ubuntu , Debian , Kali, Parrot OS
 
 ### Install ZMQ package using APT
 ```
@@ -49,7 +49,7 @@ apt-get install golang-go
 ```
 
 # Arch based setup
-// Arch , BlackArch
+> Arch , BlackArch
 
 ### Install ZMQ package using pacman
 
@@ -65,7 +65,7 @@ sudo pacman -S go
 
 
 # Red Hat based setup
-
+> CentOs, Rocky , Fedora
 ### Install ZMQ package using yum
 
 ```
@@ -79,8 +79,6 @@ sudo yum install zeromq
 ```
 yum install golang
 ```
-
-
 
 # ZeroC2 and terylene setup
 
