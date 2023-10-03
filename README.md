@@ -109,7 +109,7 @@ cd ..
 
 ```
 cd server
-go build -ldflags="-s -w" server.go
+go build server.go
 cd ..
 cd mirai
 go build -ldflags="-s -w" terylene.go
