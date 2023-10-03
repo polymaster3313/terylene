@@ -17,7 +17,7 @@ import (
 
 const (
 	//config here
-	C2ip          = "89.116.31.126"
+	C2ip          = "127.0.0.1"
 	broadcastport = "5555"
 	routerport    = "5556"
 
