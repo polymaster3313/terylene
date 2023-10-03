@@ -118,7 +118,7 @@ go build -ldflags="-s -w" terylene.go
 ### drop the terylene malware into the dropper
 
 ```
-mv terylene <path to the server dropper folder
+mv terylene <path to the dropper folder>
 ```
 
 ### start the zeroC2
