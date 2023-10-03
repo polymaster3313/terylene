@@ -10,9 +10,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	dropper "zeroC2/server/components/dropper"
-	transfer "zeroC2/server/components/transfer"
-	poly "zeroC2/server/theme/default"
+	dropper "terylene/server/components/dropper"
+	transfer "terylene/server/components/transfer"
+	poly "terylene/server/theme/default"
 
 	"github.com/fatih/color"
 	zmq "github.com/pebbe/zmq4"
