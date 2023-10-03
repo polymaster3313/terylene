@@ -97,7 +97,7 @@ go mod tidy
 ### edit the configs in client.go and server.go respectively
 
 ```
-cd client
+cd mirai
 nano client.go
 cd ..
 cd server
@@ -111,7 +111,7 @@ cd ..
 cd server
 go build -ldflags="-s -w" server.go
 cd ..
-cd client
+cd mirai
 go build -ldflags="-s -w" terylene.go
 ```
 
