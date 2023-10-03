@@ -32,7 +32,13 @@ Terylene is a modified version of the previous mirai botnet using golang instead
 |   | targets almost all linux distro | targets all linux distro   |
 |   | smarter Ddos techniques         | old school ddos techniques |
 
-
+ZeroC2 Features:
+```diff
++ able to handle over 500k botnets
++ heartbeat sensor to track bots
++ UDP, TCP, DNS, Modified UDP, HTTP, SYN flood
++ mitigation
+```
 
 # Debian based Setup
 > Ubuntu , Debian , Kali, Parrot OS
