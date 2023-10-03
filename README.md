@@ -43,48 +43,38 @@ ZeroC2 Features:
 # Debian based Setup
 > Ubuntu , Debian , Kali, Parrot OS
 
-### Install ZMQ package using APT
+### Install ZMQ + GO package using APT
 ```
 sudo apt update
 sudo apt upgrade
 sudo apt-get install libzmq3-dev
-```
-### Install golang using APT
-```
-apt-get install golang-go
+sudo apt-get install golang-go
 ```
 
 # Arch based setup
 > Arch , BlackArch
 
-### Install ZMQ package using pacman
+### Install ZMQ + GO package using pacman
 
 ```
 sudo pacman -Sy
 sudo pacman -S zeromq
-```
-
-### Install golang using pacman
-```
 sudo pacman -S go
 ```
 
 
 # Red Hat based setup
 > CentOs, Rocky , Fedora
+
 ### Install ZMQ package using yum
 
 ```
 sudo yum update
 sudo dnf makecache --refresh
 sudo yum install -y zeromq-devel
-```
-
-### Install Golang using yum
-
-```
 sudo yum install golang
 ```
+
 
 # ZeroC2 and terylene setup
 
@@ -132,5 +122,6 @@ mv terylene <path to the dropper folder>
 ```
 ./server
 ```
-//Enjoy
+
+>Enjoy ;)
 
