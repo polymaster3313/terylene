@@ -22,13 +22,13 @@ ZeroMQ and Golang is powerful combination for building distributed and scalable 
 
 
 ## ZeroC2
-ZeroC2 is a ZMQ golang C2 server designed for botnet traffic control and carrying out ddos attacks , ZeroC2 accepts connection for terylene. ZeroC2 has heartbeating sensor and it is able to transfer and mitigate terylene connection.
+ZeroC2 is a ZMQ golang C2 server designed for botnet traffic control and carrying out ddos attacks , ZeroC2 accepts connection for terylene. ZeroC2 also has heartbeating sensor and it is able to transfer and migrate terylene to other ZeroC2 servers.
 
 ## Terylene
 Terylene is a modified version of the previous mirai botnet using golang instead of C, it has improved feature of the previous version of mirai and able to carry out concurrent tasks. Terylene is self replicating and able to scan the network , identify weak ssh logins, and attempts to inject itself into the vulnerable devices directly, Instead of sending the vulnerable Device to the C2 for the C2 to infect.  Terylene is also able to carry out more Advanced ddos attacks that are adaptable with today's ddos security, which includes builtin TCP, UDP, DNS, HTTP, SYN and Modified UDP attacks.
 
 
-# Difference between Terylene and mirai botnet
+# Difference between Terylene and Mirai botnet
 
 |   | Terylene                        | Mirai botnet               |
 |---|---------------------------------|----------------------------|
