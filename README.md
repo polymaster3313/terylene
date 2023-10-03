@@ -22,14 +22,15 @@ ZeroC2 is a ZMQ golang C2 server designed for botnet traffic control and carryin
 Terylene is a modified version of the previous mirai botnet using golang instead of C, it has improved feature of the previous version of mirai and able to carry out concurrent tasks. Terylene is self replicating and able to scan the network , identify weak ssh logins, and attempts to inject itself into the vulnerable devices directly, Instead of sending the vulnerable Device to the C2 for the C2 to infect.  Terylene is also able to carry out more Advanced ddos attacks that are adaptable with today's ddos security, which includes builtin TCP, UDP, DNS, HTTP, SYN and Modified UDP attacks.
 
 
-Difference between terylene and mirai botnet
+# Difference between Terylene and mirai botnet
 
-|   | Terylene                | Mirai botnet               |
-|---|-------------------------|----------------------------|
-|   | faster worm             | slower worm                |
-|   | able to mitigate        | unable to mitigate         |
-|   | smarter Ddos techniques | old school ddos techniques |
-|   | stream socket attacks   | raw socket attacks         |
+|   | Terylene                        | Mirai botnet               |
+|---|---------------------------------|----------------------------|
+|   | faster worm                     | slower worm                |
+|   | able to mitigate                | unable to mitigate         |
+|   | stream socket attacks           | raw socket attacks         |
+|   | targets almost all linux distro | targets all linux distro   |
+|   | smarter Ddos techniques         | old school ddos techniques |
 
 
 
