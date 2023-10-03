@@ -34,4 +34,15 @@ Terylene is a modified version of the previous mirai botnet using golang instead
 
 
 
+## Ubuntu Setup
+
+# Install ZMQ package using APT
+```
+sudo apt-get update
+sudo apt-get install libzmq-dev
+```
+
+# Clone the repo 
+
+```
 
