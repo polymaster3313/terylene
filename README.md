@@ -1,5 +1,10 @@
+![ZeroC2](https://github.com/BishopFox/sliver/assets/93959737/37af624e-9935-40d2-b2ff-630c53e3ec21)
+
+
 ## ZeroMq Description
 Zeromq is a very low-level fast asynchronous messaging library that can handle large amounts of connections and requests under seconds. It was able to get a transfer rate of 10,000 messages per 15 milliseconds, or between 66,000 and 70,000 messages/s under low-latency and it was able to beat rabbitmq , kafka and many other network libraries. Additionally , zeromq lightweight and low level library made in C++ uses as little resources as possible while maintaining the best performance
+[ZeroMq benchmark]([http://wiki.zeromq.org/area:results])
+
 
 ## ZeroMq + Golang
 ZeroMQ and Golang is powerful combination for building distributed and scalable systems that can handle lots of requests. ZeroMQ is a messaging library that provides high-performance, asynchronous communication between applications, along with golang's simplicity, efficiency, and built-in support for concurrent and parallel programming, it makes the C2 very flexible, easy to manage, efficient at resource utilization and most importantly...fast
@@ -14,10 +19,13 @@ Terylene is a modified version of the previous mirai botnet using golang instead
 
 Difference between terylene and mirai botnet
 
+|   | Terylene                | Mirai botnet               |
+|---|-------------------------|----------------------------|
+|   | faster worm             | slower worm                |
+|   | able to mitigate        | unable to mitigate         |
+|   | smarter Ddos techniques | old school ddos techniques |
+|   | stream socket attacks   | raw socket attacks         |
 
 
-|   | Terylene                      | Mirai botnet               |
-|---|-------------------------------|----------------------------|
-|   |          faster worm          | slower worm                |
-|   | able to mitigate              | unable to mitigate         |
-|   | More advanced Ddos techniques | old school ddos techniques |
+
+
