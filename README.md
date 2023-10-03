@@ -58,7 +58,7 @@ sudo apt-get install libzmq3-dev
 sudo apt-get install golang-go
 ```
 
-# Arch based setup ![alt text](https://w7.pngwing.com/pngs/398/764/png-transparent-arch-linux-arch-hurd-pi-miscellaneous-cdr-angle-thumbnail.png) "Arch linux")
+# Arch based setup ![Arch linux](https://w7.pngwing.com/pngs/398/764/png-transparent-arch-linux-arch-hurd-pi-miscellaneous-cdr-angle-thumbnail.png)
 > Arch , BlackArch
 
 ### Install ZMQ + GO package using pacman
