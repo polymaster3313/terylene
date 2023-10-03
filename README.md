@@ -43,7 +43,7 @@ sudo apt update
 sudo apt upgrade
 sudo apt-get install libzmq3-dev
 ```
-### Install golang (if you havent)
+### Install golang using APT
 ```
 apt-get install golang-go
 ```
@@ -58,7 +58,7 @@ sudo pacman -Sy
 sudo pacman -S zeromq
 ```
 
-### Install golang using pacman(if you havent)
+### Install golang using pacman
 ```
 sudo pacman -S go
 ```
@@ -74,7 +74,7 @@ sudo dnf makecache --refresh
 sudo yum install zeromq
 ```
 
-### Install Golang using yum (if you havent)
+### Install Golang using yum
 
 ```
 yum install golang
