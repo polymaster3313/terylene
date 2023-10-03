@@ -98,7 +98,7 @@ go mod tidy
 
 ```
 cd mirai
-nano client.go
+nano terylene.go
 cd ..
 cd server
 nano server.go
