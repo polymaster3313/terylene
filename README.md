@@ -146,5 +146,4 @@ Unlike mirai botnet C2, ZeroMq make use of heartbeat monitoring to track the amo
 
 ZeroC2 **significant** move called "migration" or "transfer" are the most useful and unique feature so far. ZeroMq is able to control the network flow of terylene and able to make them connect to another ZeroC2 server, This can allow botmasters to transfer botnets to other botmasters using zeroC2 or even migrate all botnets to a new ZeroC2 server in case of an emergency or a defense mechanism to confuse Security researchers and investigators. ZeroC2 also needs to verify other ZeroC2 servers using a secret message to prevent migrating botnet to honeypots or invalid locations which will result to lost of bots
 
-![Migrationfinal](https://github.com/polymaster3313/Polyaccess/assets/93959737/5c6bdf07-5310-4602-8ab7-2bfff9ee3e83)
-
+![Migrationfinal(1)](https://github.com/polymaster3313/Polyaccess/assets/93959737/32e205e3-e817-4b5b-ad98-7593420b7589)
