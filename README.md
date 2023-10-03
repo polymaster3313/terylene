@@ -71,7 +71,7 @@ sudo pacman -S go
 ```
 sudo yum update
 sudo dnf makecache --refresh
-sudo yum install zeromq
+sudo yum install -y zeromq-devel
 ```
 
 ### Install Golang using yum
