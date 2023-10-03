@@ -34,7 +34,7 @@ Terylene is a modified version of the previous mirai botnet using golang instead
 |   | Terylene                        | Mirai botnet               |
 |---|---------------------------------|----------------------------|
 |   | faster worm                     | slower worm                |
-|   | able to mitigate                | unable to mitigate         |
+|   | able to migrate                 | unable to migrate          |
 |   | stream socket attacks           | raw socket attacks         |
 |   | targets almost all linux distro | targets all linux distro   |
 |   | smarter Ddos techniques         | old school ddos techniques |
