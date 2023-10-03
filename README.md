@@ -137,16 +137,14 @@ mv terylene <path to the dropper folder>
 
 
 ## heart monitoring system
-```
+
 Unlike mirai botnet C2, ZeroMq make use of heartbeat monitoring to track the amount of bots available for the botmaster, we spawn a golang goroutine to send the heartbeat to all connected terylene using router sockets. make another goroutine that handles the recieved messages and store the last heartbeat message in a map for each connected terylene. Another gouroutine is spawned to check every 3 seconds if terylenes in the map have not recieved a heartbeat response of 5 seconds, thats when ZeroMq heartbeat monitor pronounce the terylene dead and removed from the list of connected terylene
-```
+
 ![ZeroC2](https://github.com/polymaster3313/Polyaccess/assets/93959737/ae1d8bba-2fa4-4446-8fee-f610667dbfd0)
 
 ## migration
-```
-ZeroC2 significant move called "migration" or "transfer" are the most useful and unique feature so far. ZeroMq is able to control the network flow of terylene and able to make them connect to another ZeroC2 server, This can allow botmasters to transfer botnets to other botmasters using zeroC2 or even migrate all botnets to a new ZeroC2 server in case of an emergency or a defense mechanism to confuse Security researchers and investigators.
-```
 
-## 
+ZeroC2 **significant** move called "migration" or "transfer" are the most useful and unique feature so far. ZeroMq is able to control the network flow of terylene and able to make them connect to another ZeroC2 server, This can allow botmasters to transfer botnets to other botmasters using zeroC2 or even migrate all botnets to a new ZeroC2 server in case of an emergency or a defense mechanism to confuse Security researchers and investigators. ZeroC2 also needs to verify other ZeroC2 servers using a secret message to prevent migrating botnet to honeypots or invalid locations which will result to lost of bots
 
+![Migration](https://github.com/polymaster3313/Polyaccess/assets/93959737/3acd3f7e-b0e8-4dc8-a2a6-6ed08085e832)
 
