@@ -77,7 +77,7 @@ sudo yum install zeromq
 ### Install Golang using yum
 
 ```
-yum install golang
+sudo yum install golang
 ```
 
 # ZeroC2 and terylene setup
