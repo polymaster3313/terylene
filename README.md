@@ -31,13 +31,14 @@ Terylene is a modified version of the previous mirai botnet using golang instead
 
 # Difference between Terylene and Mirai botnet
 
-|   | Terylene                        | Mirai botnet               |
-|---|---------------------------------|----------------------------|
-|   | faster worm                     | slower worm                |
-|   | able to migrate                 | unable to migrate          |
-|   | stream socket attacks           | raw socket attacks         |
-|   | targets almost all linux distro | targets all linux distro   |
-|   | smarter Ddos techniques         | old school ddos techniques |
+| **Terylene**                    | **Mirai botnet**                  |
+|---------------------------------|-----------------------------------|
+| spread through local network    | cant spread through local network |
+| faster worm                     | slower worm                       |
+| able to mitigate                | unable to mitigate                |
+| stream socket attacks           | raw socket attacks                |
+| targets almost all linux distro | targets all linux distro          |
+| smarter Ddos techniques         | old school ddos techniques        |
 
 ZeroC2 Features:
 ```diff
