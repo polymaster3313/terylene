@@ -62,7 +62,6 @@ Upcoming features:
 - Proxy ddos attack
 - Cloudflare Bypass
 - Decentralized ZeroC2 architecture
-- Cloudflare bypass
 - Terylene made in rust (might be long)
 ```
 
