@@ -93,8 +93,8 @@ git clone https://github.com/polymaster3313/terylene.git
 ### setup the dependencies
 ```
 cd terylene
-go mod init terylene
-go mod tidy
+sudo go mod init terylene
+sudo go mod tidy
 ```
 
 ### edit the configs in client.go and server.go respectively
