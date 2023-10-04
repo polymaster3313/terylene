@@ -51,7 +51,7 @@ ZeroC2 Features:
 Terylene Features:
 ```diff
 + Made in Golang
-+ Able to spread through local network
++ Able to scan and spread through local network
 + Builtin Loader
 + Fast concurrent Worm spreading
 + UDP, TCP, DNS, Modified UDP, HTTP, SYN flood
