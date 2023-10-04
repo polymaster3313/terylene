@@ -2,6 +2,7 @@ package skills
 
 import (
 	"fmt"
+	"math/rand"
 	"net"
 	"os/exec"
 	"strings"
@@ -69,4 +70,12 @@ func IsSSHOpen(host string) bool {
 	}
 	defer conn.Close()
 	return true
+}
+
+func GenerateIp(r1 rand.Rand) string {
+	ip := make(net.IP, 4)
+	for i := 0; i < 4; i++ {
+		ip[i] = byte(r1.Intn(256))
+	}
+	return string(ip)
 }
