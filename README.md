@@ -62,6 +62,7 @@ Upcoming features:
 - Proxy ddos attack
 - Cloudflare Bypass
 - Decentralized ZeroC2 architecture
+- ZeroC2 and PolyC2 binding
 - New Mirai Varient that works with terylene
 ```
 
