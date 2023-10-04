@@ -62,7 +62,7 @@ Upcoming features:
 - Proxy ddos attack
 - Cloudflare Bypass
 - Decentralized ZeroC2 architecture
-- Terylene made in rust (might be long)
+- New Mirai Varient that works with terylene
 ```
 
 # Debian based Setup
