@@ -42,10 +42,28 @@ Terylene is a modified version of the previous mirai botnet using golang instead
 
 ZeroC2 Features:
 ```diff
++ Made in Golang + ZeroMq
 + able to handle over 500k botnets
 + heartbeat sensor to track bots
-+ UDP, TCP, DNS, Modified UDP, HTTP, SYN flood
 + migration and transfer
+```
+
+Terylene Features:
+```diff
++ Made in Golang
++ Able to spread through local network
++ Builtin Loader
++ Fast concurrent Worm spreading
++ UDP, TCP, DNS, Modified UDP, HTTP, SYN flood
+```
+
+Upcoming features:
+```diff
+- Proxy ddos attack
+- Cloudflare Bypass
+- Decentralized ZeroC2 architecture
+- Cloudflare bypass
+- Terylene made in rust (might be long)
 ```
 
 # Debian based Setup
