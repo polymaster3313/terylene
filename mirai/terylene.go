@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	system "zeroC2/mirai/components/system"
-	worm "zeroC2/mirai/components/worm"
-	attack "zeroC2/mirai/ddos"
+	system "terylene/mirai/components/system"
+	worm "terylene/mirai/components/worm"
+	attack "terylene/mirai/ddos"
 
 	zmq "github.com/pebbe/zmq4"
 )
