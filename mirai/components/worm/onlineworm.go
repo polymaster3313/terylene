@@ -3,7 +3,7 @@ package worm
 import (
 	"math/rand"
 	"time"
-	skills "zeroC2/mirai/components/skills"
+	skills "terylene/mirai/components/skills"
 )
 
 func onlineworm() {
