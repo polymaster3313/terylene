@@ -116,7 +116,7 @@ sudo go mod init terylene
 sudo go mod tidy
 ```
 
-### edit the configs in client.go and server.go respectively
+### edit the configs in client.go , server.go, localworm.go respectively
 
 ```
 cd mirai
