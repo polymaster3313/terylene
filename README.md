@@ -46,6 +46,7 @@ ZeroC2 Features:
 + able to handle over 500k botnets
 + heartbeat sensor to track bots
 + migration and transfer
++ dropper
 ```
 
 Terylene Features:
