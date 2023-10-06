@@ -116,16 +116,15 @@ sudo go mod init terylene
 sudo go mod tidy
 ```
 
-### edit the configs in client.go , server.go, localworm.go respectively
+### edit the configs in client.go and server.go respectively
 
 ```
 cd mirai
 nano terylene.go
-cd components/worm
-nano localworm.go
-cd ../..
+cd ..
 cd server
 nano server.go
+cd ..
 ```
 
 ### build terylene and ZeroC2

