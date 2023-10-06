@@ -39,6 +39,11 @@ Terylene is a modified version of the previous mirai botnet using golang instead
 | stream socket attacks           | raw socket attacks                |
 | targets almost all linux distro | targets all linux distro          |
 | smarter Ddos techniques         | old school ddos techniques        |
+| only targets one architecture   | targets all architecture          |
+
+## summary 
+
+Mirai is able to target a wide range of IOT devices, however terylene is able to target the architecture that it is built in. On the other hand Terylene has faster worm spreading rate than mirai, better traffic control, and smarter Ddos techniques. Terylene is the best botnet to infect powerful servers, while Mirai can infect all types of IOTs. 
 
 ZeroC2 Features:
 ```diff
