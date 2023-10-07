@@ -185,7 +185,9 @@ Every time a terylene connects to a ZeroC2 server, it will have a special connec
 
 When the ZeroC2 suddenly experience an outrage or connection issue. Terylene will be able detect the server outrage with its duplex heartbeat monitoring. It will then quickly **Backoff** from the server, aborting the connection, and reconnect to it after 30min and have a timeout connection of 5h. This prevents terylene to be lost due to sudden outrage or DDOS from other C2 servers. Exponential backoff enhances the fault tolerance of the client-server communication. When a server outage or connection issue occurs, the client doesn't immediately flood the server with connection attempts, which could exacerbate the problem. Instead, it backs off, reducing the load on the server and the network.
 
+## connection deduplication , Backoff and Retry Demonstration
 
+https://github.com/polymaster3313/Polyaccess/assets/93959737/4315b8ee-97c6-4fa3-9be9-e0b54f3f1cf0
 
 PS: If connection timed out (5h) , Terylene will pronounce the C2 as dead, **mother priority** will be activated
 
