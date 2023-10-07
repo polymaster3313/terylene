@@ -178,7 +178,8 @@ ZeroC2 **significant** move called "migration" or "transfer" are the most useful
 
 Every time a terylene connects to a ZeroC2 server, it will have a special connection ID that is hashed with its public ip and local ip. ZeroC2 will log the connection ID and monitor it with heartbeat. This will effectively prevent double connection from the same device.By using this technique, the server can prevent multiple connections from the same client device. If the same client attempts to establish a new connection while an existing connection is active (based on the same connection ID), the server can reject the new connection or take appropriate action to handle the situation. This implementation can be more resource sufficient for the server and easier load balancing for the future.
 
-![ZeroC2](https://github.com/polymaster3313/Polyaccess/assets/93959737/071d5ae4-7a30-4633-b536-b7b057f7bf60)
+![connection deduplication](https://github.com/polymaster3313/Polyaccess/assets/93959737/d3afa189-bc73-439c-b575-d2b9fbb12d59)
+
 
 # Backoff and Retry
 
