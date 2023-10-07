@@ -32,15 +32,8 @@ func Pinger(local string, device string) []string {
 				<-sem
 				return
 			}
-			var cmd *exec.Cmd
-			if device == "windows" {
-				cmd = exec.Command("ping", "-n", "1", "-w", "1", targetHost)
-			} else if device == "linux" {
-				cmd = exec.Command("ping", "-c", "1", "-w", "1", targetHost)
-			} else {
-				<-sem
-				return
-			}
+			cmd := exec.Command("ping", "-c", "1", "-w", "1", targetHost)
+
 			output, err := cmd.CombinedOutput()
 			if err != nil {
 				<-sem
