@@ -45,6 +45,20 @@ Terylene is a modified version of the previous mirai botnet using golang instead
 
 Mirai is able to target a wide range of IOT devices, however terylene is able to target the architecture that it is built in (because pebbe zermq does not support cross compiling) . On the other hand Terylene has faster worm spreading rate than mirai, better traffic control, and smarter Ddos techniques. Terylene is the best botnet to infect powerful servers, while Mirai can infect all types of IOTs. 
 
+# Difference between ZeroC2 and common C2 servers
+
+| **ZeroC2**               | **common C2 servers**  |
+|--------------------------|------------------------|
+| Decentralized            | Centralized            |
+| Fast flux and dynamic ip | Static ip              |
+| High Fault tolerance     | little fault tolerance |
+| botnet authentication    | No authentication      |
+| fast messaging library   | builtin net libraries  |
+
+## ZeroC2 vs Common C2 Summary
+
+ZeroC2 incorporates advanced features like "Mother Priority" for redundancy, "Backoff and Retry" for resilience, and "Transfer or Migration" for evasion. These features are tailored for the efficient management of botnets. ZeroC2 allows a decentralized infrastructure to avoid detection and takedown efforts, while legitimate C2 servers are typically centralized and well-managed. ZeroC2 also secret messages to verify other ZeroC2 servers, preventing migration to honeypots or invalid locations, Legitimate C2 servers rely on standard authentication and verification practices for authorized access.
+
 ZeroC2 Features:
 ```diff
 # Made in Golang + ZeroMq
