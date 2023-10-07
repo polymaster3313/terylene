@@ -199,9 +199,9 @@ PS: If connection timed out (5h) , Terylene will pronounce the C2 as dead, **mot
 
 # Mother priority
 
-The mother priority is one of the most interesting feature of ZeroC2. terylene views ZeroC2 in two category, Mother C2 and foster C2. Mother C2 is the C2 that terylene first ever connects to and its the C2 that "gave birth" to the terylene and terylene will always remember their mother ip and connections. The foster C2 is the C2 that the mother transfers the terylene to, named after "foster parents". Mother priority is only activated when the foster is pronounced dead by terylene. Terylene will then abandone the foster and connect to the Mother, and this time, the timeout connection is 1month before pronouncing the mother as dead. Mother Priority is designed to provide redundancy and fault tolerance. If one C2 server is compromised or unavailable, the botnet can quickly revert to its primary C2 server to maintain control and coordination. 
+Mother Priority is a noteworthy feature within the ZeroC2 system. Particularly interesting for its role in ensuring the resilience of the Terylene botnet's command and control (C2) infrastructure. Within the Terylene botnet, ZeroC2 categorizes ZeroC2 servers into two key roles: 'Mother C2' and 'foster C2.' Mother C2 is the C2 that terylene first ever connected to and its considered its "birthplace", terylene will always remember their mother ip and connections. The foster C2 is the C2 that the mother transfers the terylene to, named after "foster parents". Mother priority is only activated when the foster is pronounced dead by terylene. Terylene will then abandone the foster and connect to the Mother server, and this time, the timeout connection is 1month before pronouncing the mother as dead. Mother Priority is designed to provide redundancy and fault tolerance. If one C2 server is compromised or unavailable, the botnet can quickly revert to its primary C2 server to maintain control and coordination. 
 
-Addtionally: If the mother is pronounced dead, the terylene will **kill itself**
+Addtionally: If the mother is pronounced dead, the terylene will **abort and kill itself**
 
 ![mother](https://github.com/polymaster3313/Polyaccess/assets/93959737/197b2d09-8b81-40b6-b73d-e5b14df6c5ff)
 
