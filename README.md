@@ -65,10 +65,10 @@ Terylene Features:
 Updated features:
 
 ```diff
-! Duplex heartbeat monitoring
-! ZeroC2: connection deduplication mechanism
-! Terylene: Retrying and Backoff mechanism
-! Terylene: Mother priority mechanism
++ Duplex heartbeat monitoring
++ ZeroC2: connection deduplication mechanism
++ Terylene: Retrying and Backoff mechanism
++ Terylene: Mother priority mechanism
 ```
 
 
