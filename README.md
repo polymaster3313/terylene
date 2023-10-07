@@ -83,14 +83,14 @@ Updated features:
 + ZeroC2: connection deduplication mechanism
 + Terylene: Retrying and Backoff mechanism
 + Terylene: Mother priority mechanism
++ Decentralized ZeroC2 architecture
 ```
 
 
 Upcoming features:
 ```diff
-- Proxy ddos attack
+- more ddos methods
 - Cloudflare Bypass
-- Decentralized ZeroC2 architecture
 - ZeroC2 and PolyC2 binding
 - New Mirai Varient that works with terylene
 ```
