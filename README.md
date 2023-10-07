@@ -178,17 +178,23 @@ ZeroC2 **significant** move called "migration" or "transfer" are the most useful
 
 Every time a terylene connects to a ZeroC2 server, it will have a special connection ID that is hashed with its public ip and local ip. ZeroC2 will log the connection ID and monitor it with heartbeat. This will effectively prevent double connection from the same device.By using this technique, the server can prevent multiple connections from the same client device. If the same client attempts to establish a new connection while an existing connection is active (based on the same connection ID), the server can reject the new connection or take appropriate action to handle the situation. This implementation can be more resource sufficient for the server and easier load balancing for the future.
 
+![ZeroC2](https://github.com/polymaster3313/Polyaccess/assets/93959737/071d5ae4-7a30-4633-b536-b7b057f7bf60)
+
 # Backoff and Retry
 
 When the ZeroC2 suddenly experience an outrage or connection issue. Terylene will be able detect the server outrage with its duplex heartbeat monitoring. It will then quickly **Backoff** from the server, aborting the connection, and reconnect to it after 30min and have a timeout connection of 5h. This prevents terylene to be lost due to sudden outrage or DDOS from other C2 servers. Exponential backoff enhances the fault tolerance of the client-server communication. When a server outage or connection issue occurs, the client doesn't immediately flood the server with connection attempts, which could exacerbate the problem. Instead, it backs off, reducing the load on the server and the network.
+
+
 
 PS: If connection timed out (5h) , Terylene will pronounce the C2 as dead, **mother priority** will be activated
 
 # Mother priority
 
-The mother priority is one of the most interesting feature of ZeroC2. terylene views ZeroC2 in two category, Mother C2 and foster C2. Mother C2 is the C2 that terylene first ever connects to and its the C2 that "gave birth" to the terylene and terylene will always remember their mother C2 ip and connections. The foster C2 is the C2 that the mother C2 transfers the terylene to, named after "foster parents". Mother priority is only activated when the foster C2 is pronounced dead by terylene. Terylene will then abandone the foster C2 and connect to the Mother C2, and this time, the timeout connection is 1month before pronouncing the mother as dead. Mother Priority is designed to provide redundancy and fault tolerance. If one C2 server is compromised or unavailable, the botnet can quickly revert to its primary C2 server to maintain control and coordination. 
+The mother priority is one of the most interesting feature of ZeroC2. terylene views ZeroC2 in two category, Mother C2 and foster C2. Mother C2 is the C2 that terylene first ever connects to and its the C2 that "gave birth" to the terylene and terylene will always remember their mother ip and connections. The foster C2 is the C2 that the mother transfers the terylene to, named after "foster parents". Mother priority is only activated when the foster is pronounced dead by terylene. Terylene will then abandone the foster and connect to the Mother, and this time, the timeout connection is 1month before pronouncing the mother as dead. Mother Priority is designed to provide redundancy and fault tolerance. If one C2 server is compromised or unavailable, the botnet can quickly revert to its primary C2 server to maintain control and coordination. 
 
 Addtionally: If the mother is pronounced dead, the terylene will **kill itself**
+
+![mother](https://github.com/polymaster3313/Polyaccess/assets/93959737/197b2d09-8b81-40b6-b73d-e5b14df6c5ff)
 
 
 
