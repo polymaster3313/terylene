@@ -67,7 +67,7 @@ format:
 | TCP     | TCP flood                                     |
 | SYN     | SYN flood                                     |
 | HTTP    | HTTP get flood                                |
-| DNS     | DNS flood                                     |
+| UDPRAPE | Crafted UDP flood                             |
 | UDP-VIP | UDP flood to bypass discord , amazon and more |
 +---------+-----------------------------------------------+
 
