@@ -26,7 +26,7 @@ ZeroC2 is a ZMQ golang C2 server designed for botnet traffic control and carryin
 [ZeroC2 demonstration](https://www.youtube.com/watch?v=VG-fimAH65w "ZeroC2 server")
 
 ## Terylene
-Terylene is a modified version of the previous mirai botnet using golang instead of C, it has improved feature of the previous version of mirai and able to carry out concurrent tasks. Terylene is self replicating and able to scan the network , identify weak ssh logins, and attempts to inject itself into the vulnerable devices directly, Instead of sending the vulnerable Device to the C2 for the C2 to infect.  Terylene is also able to carry out more Advanced ddos attacks that are adaptable with today's ddos security, which includes builtin TCP, UDP, DNS, HTTP, SYN and Modified UDP attacks.
+Terylene is a modified version of the previous mirai botnet using golang instead of C, it has improved feature of the previous version of mirai and able to carry out concurrent tasks. Terylene is self replicating and able to scan the network , identify weak ssh logins, and attempts to inject itself into the vulnerable devices directly, Instead of sending the vulnerable Device to the C2 for the C2 to infect.  Terylene is also able to carry out more Advanced ddos attacks that are adaptable with today's ddos security.
 
 
 # Difference between Terylene and Mirai botnet
@@ -61,29 +61,32 @@ ZeroC2 incorporates advanced features like "Mother Priority" for redundancy, "Ba
 
 ZeroC2 Features:
 ```diff
+# Duplex heartbeat monitoring
+# connection deduplication mechanism
 # Made in Golang + ZeroMq
 # able to handle over 500k botnets
 # heartbeat sensor to track bots
 # migration and transfer
+# Decentralized
 ```
 
 Terylene Features:
 ```diff
+# Duplex heartbeat monitoring
+# Retrying and Backoff mechanism
+# Mother priority mechanism
 # Made in Golang
 # Able to scan and spread through local network
 # Builtin Loader
 # Fast concurrent Worm spreading
-# UDP, TCP, DNS, Modified UDP, HTTP, SYN flood
+# UDP, TCP, UDPRAPE, Modified UDP, HTTP, SYN flood
 ```
 
 Updated features:
 
 ```diff
-+ Duplex heartbeat monitoring
-+ ZeroC2: connection deduplication mechanism
-+ Terylene: Retrying and Backoff mechanism
-+ Terylene: Mother priority mechanism
-+ Decentralized ZeroC2 architecture
++ Fixed a critical error with the DDos communication
++ Replaced DNS with UDPRAPE (crafted UDP method)
 ```
 
 
