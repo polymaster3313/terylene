@@ -43,7 +43,7 @@ Terylene is a modified version of the previous mirai botnet using golang instead
 
 ## Terylene vs Mirai Summary 
 
-Mirai is able to target a wide range of IOT devices, however terylene is able to target the architecture that it is built in (because pebbe zermq does not support cross compiling) . On the other hand Terylene has faster worm spreading rate than mirai, better traffic control, and smarter Ddos techniques. Terylene is the best botnet to infect powerful servers, while Mirai can infect all types of IOTs. 
+Mirai is able to target a wide range of IOT devices, however terylene is able to target the architecture that it is built in (because golang doesnt support cross compilation with C) . On the other hand Terylene has faster worm spreading rate than mirai, better traffic control, and smarter Ddos techniques. Terylene is the best botnet to infect powerful servers, while Mirai can infect all types of IOTs. 
 
 # Difference between ZeroC2 and Mirai C2
 
