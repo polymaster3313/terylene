@@ -49,8 +49,7 @@ Upcoming features:
 - New Mirai Varient that works with terylene
 ```
 
-# VISIT OUT WIKI FIRST
-## [ZeroC2 infrastructure wiki](https://github.com/polymaster3313/terylene/wiki/Introduction) 
+# [ZeroC2 wiki](https://github.com/polymaster3313/terylene/wiki/Introduction) 
 
 
 # Debian based Setup
