@@ -49,6 +49,10 @@ Upcoming features:
 - New Mirai Varient that works with terylene
 ```
 
+# VISIT OUT WIKI FIRST
+## [ZeroC2 infrastructure wiki](https://github.com/polymaster3313/terylene/wiki/Introduction) 
+
+
 # Debian based Setup
 > Ubuntu , Debian , Kali, Parrot OS
 
@@ -158,5 +162,3 @@ PS: If connection timed out (5h) , Terylene will pronounce the C2 as dead, **mot
 
 ![mother](https://github.com/polymaster3313/Polyaccess/assets/93959737/197b2d09-8b81-40b6-b73d-e5b14df6c5ff)
 
-
-[ZeroC2 infrastructure wiki](https://github.com/polymaster3313/terylene/wiki/Introduction)
