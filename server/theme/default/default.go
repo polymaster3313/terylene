@@ -1,6 +1,6 @@
 package poly
 
-var (
+const (
 	Title = `
 
 	⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⠒⠒⠒⠒⠒⠒⠒⠒⢲⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
@@ -53,6 +53,7 @@ clear    -> clear screen
 list     -> list all bots
 transfer -> transfer bots to another zeroC2 server
 payload  -> get payload command
+killall  -> kill all terylene bots
 exit     -> exit
 `
 	Methods = `
@@ -72,5 +73,7 @@ format:
 +---------+-----------------------------------------------+
 
 `
-	Broadcastmsg = `broadcasted to all terylene`
+	Ddosmsg = `attack broadcasted to all terylene`
+
+	Nigger
 )

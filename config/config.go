@@ -2,7 +2,7 @@ package config
 
 const (
 	//config here
-	C2ip          = "0.0.0.0"
+	C2ip          = "127.0.0.1"
 	Broadcastport = "5555"
 	Routerport    = "5556"
 )

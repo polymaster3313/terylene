@@ -85,28 +85,31 @@ Terylene Features:
 Updated features:
 
 ```diff
-+ Fixed a critical error with the DDos communication
-+ Replaced DNS with UDPRAPE (crafted UDP method)
++ fixed critical error and implemented thread safety
++ added "killall" command 
++ improved reconnection fault tolerance
++ fixed DDos methods
 ```
 
 
 Upcoming features:
 ```diff
 - more ddos methods
+- custom methods
 - Cloudflare Bypass
-- ZeroC2 and PolyC2 binding
 - New Mirai Varient that works with terylene
 ```
 
 # Debian based Setup
 > Ubuntu , Debian , Kali, Parrot OS
 
-### Install ZMQ + GO package using APT
+### Install ZMQ + GO package using SNAP
 ```
 sudo apt update
 sudo apt upgrade
 sudo apt-get install libzmq3-dev
-sudo apt-get install golang-go
+sudo apt install snapd
+snap install go --stable
 ```
 
 # Arch based setup
@@ -141,11 +144,9 @@ sudo yum install golang
 git clone https://github.com/polymaster3313/terylene.git
 ```
 
-### setup the dependencies
+### cd into the folder
 ```
 cd terylene
-sudo go mod init terylene
-sudo go mod tidy
 ```
 
 ### edit the configs in config folder.
@@ -184,7 +185,7 @@ mv terylene ../server/dropper
 # ZeroMq and Terylene More in Depth
 
 
-## heart monitoring system
+## duplex heart monitoring system
 
 Unlike mirai botnet C2, ZeroMq make use of heartbeat monitoring to track the amount of bots available for the botmaster, we spawn a golang goroutine to send the heartbeat to all connected terylene using router sockets. make another goroutine that handles the recieved messages and store the last heartbeat message in a map for each connected terylene. Another gouroutine is spawned to check every 3 seconds if terylenes in the map have not recieved a heartbeat response of 5 seconds, thats when ZeroMq heartbeat monitor pronounce the terylene dead and removed from the list of connected terylene
 
