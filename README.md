@@ -61,7 +61,7 @@ sudo apt update
 sudo apt upgrade
 sudo apt-get install libzmq3-dev
 sudo apt install snapd
-snap install go --stable
+snap install go --classic
 ```
 
 # Arch based setup
