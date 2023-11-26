@@ -1,5 +1,6 @@
 package poly
 
+// basic message
 const (
 	Title = `
 
@@ -53,7 +54,7 @@ clear    -> clear screen
 list     -> list all bots
 transfer -> transfer bots to another zeroC2 server
 payload  -> get payload command
-killall  -> kill all terylene bots
+kill     -> kill all terylene bots
 exit     -> exit
 `
 	Methods = `
@@ -75,5 +76,30 @@ format:
 `
 	Ddosmsg = `attack broadcasted to all terylene`
 
-	Nigger
+	InvalidIp = `Invalid ip address (must be a public ipv6 address)`
+
+	Invalidport = `Invalid port`
+
+	NoConnId = `No such ConnID`
+)
+
+// transfer message
+const (
+	Transferhelp = `transfer <target ip> <port> <random/specific> <number/connID>`
+
+	Nobots = `you dont have any online bots sadly :(`
+
+	InvalidNumber = `number is invalid`
+
+	NoMitigation = `Mitigation cancelled`
+
+	MitSuccess = `Mitigation succeeded`
+)
+
+//kill message
+
+const (
+	Killhelp   = `kill <connID/all>`
+	Killallsuc = `all terylene has been killed`
+	Killone    = `%s has been killed`
 )
