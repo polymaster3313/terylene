@@ -1,4 +1,4 @@
-package main
+package fade
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func red(text string) string {
+func Amber(text string) string {
 	faded := ""
 	for _, line := range strings.Split(text, "\n") {
 		green := 250
@@ -22,7 +22,7 @@ func red(text string) string {
 	return faded
 }
 
-func water(text string) string {
+func Water(text string) string {
 	faded := ""
 	green := 10
 	for _, line := range strings.Split(text, "\n") {
@@ -37,7 +37,7 @@ func water(text string) string {
 	return faded
 }
 
-func purple(text string) string {
+func Purple(text string) string {
 	faded := ""
 	down := false
 
@@ -62,7 +62,7 @@ func purple(text string) string {
 	return faded
 }
 
-func rainbow(text string, delay time.Duration) {
+func Rainbow(text string, delay time.Duration) {
 	colors := []int{91, 93, 92, 96, 94, 95}
 
 	for _, char := range text {
@@ -74,12 +74,4 @@ func rainbow(text string, delay time.Duration) {
 	}
 
 	fmt.Print("\033[0m")
-}
-
-func main() {
-	text := "Hello, world!"
-	fmt.Println(red(text))
-	fmt.Println(water(text))
-	fmt.Println(purple(text))
-	rainbow(text, 200*time.Millisecond)
 }
