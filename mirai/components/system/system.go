@@ -3,13 +3,10 @@ package system
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"io"
 	"net"
-	"net/http"
 	"os/exec"
 	"runtime"
 	"strings"
-	"time"
 )
 
 // get ip through google dns
@@ -33,26 +30,6 @@ func getpubIp2() (string, error) {
 	}
 
 	return string(output), nil
-}
-func GetpubIp() (string, error) {
-	url := "https://api.ipify.org?format=text"
-	client := http.Client{
-		Timeout: 5 * time.Second,
-	}
-	resp, err := client.Get(url)
-	if err != nil {
-		ip, err := getpubIp2()
-		if err != nil {
-			return "", err
-		}
-		return ip, nil
-	}
-	defer resp.Body.Close()
-	ip, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-	return string(ip), nil
 }
 
 func GetOS() (string, error) {
@@ -94,7 +71,7 @@ func GETSYSTEM() (string, string, string) {
 	}
 	arch := runtime.GOARCH
 
-	pubip, err := GetpubIp()
+	pubip, err := GETIPDNS()
 	if err != nil {
 		return "", "", ""
 	}
