@@ -3,11 +3,19 @@ package system
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
+	"io/ioutil"
+	"log"
 	"net"
+	"net/http"
 	"os/exec"
 	"runtime"
 	"strings"
 )
+
+type IP struct {
+	Query string
+}
 
 // get ip through google dns
 func GETIPDNS() (string, error) {
@@ -21,15 +29,23 @@ func GETIPDNS() (string, error) {
 
 	return localAddr.IP.String(), nil
 }
-func getpubIp2() (string, error) {
-	cmd := exec.Command("curl", "ifconfig.me")
 
-	output, err := cmd.CombinedOutput()
+func getpubip() string {
+	req, err := http.Get("http://ip-api.com/json/")
 	if err != nil {
-		return "", err
+		return err.Error()
+	}
+	defer req.Body.Close()
+
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		return err.Error()
 	}
 
-	return string(output), nil
+	var ip IP
+	json.Unmarshal(body, &ip)
+
+	return ip.Query
 }
 
 func GetOS() (string, error) {
@@ -64,19 +80,21 @@ func GenerateConnID(localIP, pubIP string) string {
 }
 
 // get system information
-func GETSYSTEM() (string, string, string) {
+func GETSYSTEM() (string, string, string, string) {
 	os, err := GetOS()
 	if err != nil {
-		os = runtime.GOARCH
+		log.Fatalln(err)
 	}
 	arch := runtime.GOARCH
 
-	pubip, err := GETIPDNS()
-	if err != nil {
-		return "", "", ""
-	}
+	pubip := getpubip()
 
-	return arch, os, pubip
+	localip, err := GETIPDNS()
+
+	if err != nil {
+		localip = GetIpInterface()
+	}
+	return arch, os, pubip, localip
 }
 
 // get Wifi local ip through iterface

