@@ -29,8 +29,6 @@ func Setup() (terminal *color.Color, nrouter, npublisher *zmq.Socket) {
 
 	time.Sleep(50 * time.Millisecond)
 
-	color.Cyan("[...]creating zeroC2 broadcast server")
-
 	publisher, err := zmq.NewSocket(zmq.PUB)
 
 	if err != nil {
@@ -48,8 +46,6 @@ func Setup() (terminal *color.Color, nrouter, npublisher *zmq.Socket) {
 	}
 
 	color.Green("[✔] successfully started zeroC2 broadcast")
-
-	color.Cyan("[...]creating zeroC2 router server")
 
 	router, err := zmq.NewSocket(zmq.ROUTER)
 

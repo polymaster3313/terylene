@@ -1,0 +1,6 @@
+ GET    /GetBotsOnline            --> get amount of bots online in C2
+ GET    /GetBotslist              --> get list of connIDs of the bots connected to the C2 
+ GET    /Uptime                   --> get C2 uptime
+ GET    /shutdown                 --> shutdown C2
+ GET    /GetInfo                  --> get bot info through connID  (query (ID=<botid>))
+ GET    /Getpayload               --> get C2 one line payload

