@@ -3,7 +3,11 @@ package system
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
+	"io/ioutil"
+	"log"
 	"net"
+	"net/http"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -26,14 +30,22 @@ func GETIPDNS() (string, error) {
 	return localAddr.IP.String(), nil
 }
 
-func getpubip() string {
+func getpubIp() string {
 	req, err := http.Get("http://ip-api.com/json/")
 	if err != nil {
 		return err.Error()
 	}
 	defer req.Body.Close()
-  
-	return string(output), nil
+
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		return err.Error()
+	}
+
+	var ip IP
+	json.Unmarshal(body, &ip)
+
+	return ip.Query
 }
 
 func GetOS() (string, error) {
@@ -74,6 +86,10 @@ func GETSYSTEM() (string, string, string, string) {
 		log.Fatalln(err)
 	}
 	arch := runtime.GOARCH
+
+	pubip := getpubIp()
+
+	localip, err := GETIPDNS()
 
 	if err != nil {
 		localip = GetIpInterface()
