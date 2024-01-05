@@ -40,6 +40,7 @@ var (
 	tera        = make(map[string]Botstruc)
 	aliveclient = make(map[string]time.Time)
 	shell       = false
+	start       = time.Now()
 	pubmutex    sync.Mutex
 	routmutex   sync.Mutex
 )
