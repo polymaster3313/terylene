@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"net/http"
 	initdb "terylene/webserver/initDB"
@@ -108,7 +109,7 @@ func main() {
 		c.File("./static/APIinfo.txt")
 	})
 
-	router.Run(":80")
+	router.Run(fmt.Sprintf(":%s", port))
 }
 
 func authenticateToken(c *gin.Context, token string, db *sql.DB) bool {
