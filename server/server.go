@@ -39,7 +39,6 @@ var (
 	connIDs     = make(map[string]string)
 	tera        = make(map[string]Botstruc)
 	aliveclient = make(map[string]time.Time)
-	start       = time.Now()
 	shell       = false
 	pubmutex    sync.Mutex
 	routmutex   sync.Mutex

