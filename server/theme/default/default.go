@@ -105,6 +105,10 @@ const (
 	Killone    = `%s has been killed`
 )
 
+const (
+	AddmethodHelp = `addmethod <method name>`
+)
+
 // interaction shell message
 // Font
 const (

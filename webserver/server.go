@@ -49,18 +49,22 @@ func tableExists(db *sql.DB, tableName string) bool {
 
 func C2Call(zcon *zmq.Context, args ...interface{}) []string {
 	req, err := zcon.NewSocket(zmq.REQ)
-	defer req.Close()
 
 	if err != nil {
 		log.Println(err)
 	}
 
-	req.SetRcvtimeo(time.Second * 3)
+	req.SetRcvtimeo(time.Second * 5)
 	req.Connect("ipc:///tmp/ZeroCall")
 	req.SendMessage(args...)
 
 	result, err := req.RecvMessage(0)
 
+	req.Close()
+
+	if len(result) == 0 {
+		return []string{"server IPC timed out (zeroC2 may be down)"}
+	}
 	return result
 }
 

