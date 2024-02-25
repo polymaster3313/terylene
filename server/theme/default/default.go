@@ -48,19 +48,26 @@ const (
 	Cmd = "Z2::->(⋆♱✮♱⋆)>"
 
 	Help = `
+
+		C2 COMMANDS
 methods  -> list all the methods
 help     -> help menu
 clear    -> clear screen
 list     -> list all bots
-transfer -> transfer/mitigate bots to another zeroC2 server
 payload  -> get payload command
-shell    -> spawn a reverse shell
-kill     -> kill terylene bots
+
+		TERYLENE COMMANDS
+transfer -> transfer/mitigate terylene bots to another zeroC2 server
+shell    -> spawn a reverse shell on a terylene bot
+kill     -> kill a terylene bot
+
+		METHOD COMMANDS
+addmethod    -> add a method and distribute to connected terylene bots
+deletemethod -> delete a method from the C2 and connected terylene bots
+
+		OTHER COMMANDS
 exit     -> exit
 `
-	Attackmsg = `
-
-	`
 	Ddosmsg = `attack broadcasted to all terylene`
 
 	InvalidIp = `Invalid ip address (must be a public ipv4 address)`
@@ -91,8 +98,10 @@ const (
 	Killone    = `%s has been killed`
 )
 
+// method management
 const (
-	AddmethodHelp = `addmethod <method name>`
+	AddmethodHelp    = `addmethod <method name>`
+	DeletemethodHelp = `deletemethod <method name>`
 )
 
 var (
@@ -172,4 +181,38 @@ const (
 	⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠃⠀⠀⠀⠀
 `
 	Shellhelp = "shell <connID>"
+)
+
+const (
+	//custom method arts
+	AddmethodArt = `
+	⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⣀⣠⠤⠖⠒⠐⠲⢤⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+	⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⠀⠾⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⣉⣷⡦⠤⠤⣤⡀⠀⠀⠀⠀⠀⠀⠀
+	⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣤⡞⠉⠀⢠⠟⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠳⡈⠛⠶⣤⡈⠻⡄⠀⠀⠀⠀⠀⠀
+	⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣠⣶⡾⠟⠃⣠⡔⣺⠃⡎⠀⠀⠀⠀⠀⠀⠀⠀⢀⠀⠀⠀⠈⠳⣄⢸⡇⠀⣧⢰⡄⠀⠀⠀⠀
+	⠀⠀⠀⠀⠀⠀⠀⠀⣠⠶⢛⡿⠋⠀⡴⠋⡽⡱⠁⣸⡅⠀⡀⠀⠀⠀⠀⠀⡞⢸⠀⢠⡇⠀⠀⠈⠛⢧⡀⣿⠀⠙⢦⠀⠀⠀
+	⠀⠀⠀⠀⠀⢀⡴⠞⠁⢠⠞⠀⠀⣀⡇⣼⣱⠁⠀⡟⡇⠀⢹⠀⠀⠀⠀⣸⢁⡟⠀⡼⢷⡀⢸⡀⠀⠀⠙⠛⡀⠀⠀⢣⠀⠀
+	⠀⠀⠀⠀⠀⠉⠀⠀⢀⠏⠀⠀⡼⠁⢇⣿⠃⢀⣷⣇⣿⠀⠸⡀⠀⠀⣞⣇⣾⠇⣼⠃⠈⢷⠘⣧⣤⠀⠀⠀⡇⠀⠀⠈⢧⠀
+	⠀⠀⠀⠀⠀⠀⠀⠀⣼⠀⣰⣾⠁⢀⡼⣿⠀⣸⡟⢿⡟⣧⠀⣷⠀⣰⢹⡿⣿⣟⣉⣉⡉⠙⢷⢿⣾⡀⠀⠀⡇⠀⠀⠀⠘⡇
+	⠀⠀⠀⠀⠀⠀⠀⠀⡇⣰⢟⡇⢠⠞⡀⣿⠀⣿⣇⣼⡟⢛⣷⣏⣷⡇⢸⡵⠿⠟⣽⣿⣿⠿⢿⣿⣿⡇⠀⠀⡇⠀⠀⠀⠀⢿
+	⠀⠀⠀⠀⠀⠀⠀⠀⣧⡇⢸⡰⠃⡇⠘⣿⢸⡿⠁⣠⣿⣿⡟⣿⡇⢷⣿⠀⠀⠀⠙⠛⠋⠀⠀⣸⣿⣧⠀⢰⠃⠀⠀⢰⠂⢸
+	⠀⠀⠀⠀⠀⠀⠀⠀⠹⢠⣿⠁⠀⣇⠀⠘⣿⣿⣿⠏⠿⠛⣱⠃⡿⠀⠹⡄⠀⠀⠀⠀⣀⣠⣴⡿⢿⣿⣇⡞⠀⠀⢠⠏⠀⣼   adding methods
+	⠀⠀⠀⠀⠀⠀⠀⢀⡴⠋⢿⠀⣰⢻⡀⠤⣽⣤⣽⠶⠤⠀⠁⠀⠛⠿⠂⠘⠒⠒⣋⣭⢿⡿⠋⣰⠿⣯⡿⢇⠀⣠⠏⠀⢀⡇
+	⠀⠀⠀⠀⠀⠀⠴⠋⠀⠀⠸⣠⠇⣠⣧⣄⡀⣩⣭⣭⡽⠟⠃⠀⠀⠀⠀⠀⠐⠋⠁⢀⣾⠃⠘⣁⣄⡟⠀⢀⣿⣿⠀⠀⡼⠁
+	⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⣿⠋⢻⣿⣌⠙⢿⣿⡉⠁⠀⠀⠘⠛⠋⠉⠁⠀⣴⠟⣁⣴⣾⣿⢿⣧⠞⣫⠟⢁⣀⡜⠁⠀
+	⠀⠀⠀⠀⠀⠀⢀⣀⣠⡴⠿⢻⠃⣰⣺⠈⢻⠷⢦⣬⣗⣦⣄⣀⡀⠀⠀⠤⠴⠟⠓⣋⠽⠛⣿⡿⢾⡟⠛⠁⣠⡿⠋⠀⠀⠀
+	⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣴⣿⣿⡆⣿⠀⠀⠉⢳⢭⣷⣬⠁⠀⠀⠀⣀⣴⡞⠥⣶⠟⠁⣠⠞⣁⣄⡼⠋⠀⠀⠀⠀⠀
+	⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⠃⣿⠀⢧⠀⡀⢀⡀⡌⠀⢨⠛⣿⡳⠄⠉⠉⣀⣴⣾⣥⣶⣿⣿⣾⠟⠁⠀⠀⠀⠀⠀⠀⠀
+	⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠀⠻⠀⠘⣆⡇⣼⡇⠇⣰⣿⣿⣿⣿⣿⣟⡋⠔⠉⠱⠛⠋⢹⠟⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀
+	⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⣷⡇⢻⣠⢏⣿⣿⣿⣿⣿⣿⣿⣶⣤⣤⣀⣠⣿⡆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+	⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠀⣨⡿⠿⣷⡈⠉⣿⡙⠛⠿⣿⣿⣿⣿⣿⠟⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+	⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣤⣶⣟⠫⠀⣠⡾⢋⡸⢿⣿⣷⡄⠀⢸⣿⢻⣯⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+	⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣠⠤⠚⠉⠀⣸⠟⢣⣾⣫⠴⠋⠀⠀⠈⠉⠀⠀⠘⢃⢻⣽⣷⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+	⠀⠀⠀⠀⠀⠀⣀⠠⠴⠖⠛⠉⠀⠀⢀⣠⡾⠋⢠⡿⠙⢦⡀⠀⠀⠀⠀⠀⠀⠀⠀⢸⠀⠉⢻⣿⠿⣦⡀⠀⠀⠀⠀⠀⠀⠀
+	⠀⠀⠀⠀⣴⠟⠁⠀⠀⠀⠀⠀⠀⠀⣾⠋⠈⠉⣹⣿⠒⠲⠽⠶⣦⣄⣀⣤⣄⠀⢰⢿⣤⣴⣫⡽⣷⢻⡍⠳⡄⠀⠀⠀⠀⠀
+	⠀⠀⠀⡼⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⢹⣎⡄⠀⠀⠿⣷⠀⠀⠀⠀⠀⠀⠀⠙⣆⢸⢸⠁⠀⠀⠀⣿⠘⣷⡀⠀⠠⣄⠀⠀⠀
+	⠀⠀⢰⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣸⠏⠁⠀⠀⣰⠟⠀⠀⠀⠀⠀⠀⠀⠀⠘⠶⠞⠀⠀⠀⠀⠹⣟⣾⢿⡄⠀⠈⢳⡀⠀
+	⢠⡶⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⡟⠃⢀⣠⣾⠏⠀⠀⠀⠀⠀⠀⠀⠀⣠⣤⣄⣤⡀⠀⠀⠀⠀⣿⠇⣊⢻⡀⠀⠀⢻⡄
+	⢸⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣿⣿⣿⣿⣿⡿⠃⠀⠀⠀⠀⠀⠀⠀⠀⣿⣼⢻⣿⠁⠀⠀⠀⣰⣟⠀⠈⣸⡷⠀⠀⠀⣷
+`
 )
