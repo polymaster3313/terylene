@@ -31,22 +31,22 @@ Terylene Features:
 # UDP, TCP, UDPRAPE, Modified UDP, HTTP, SYN flood
 ```
 
-Updated features:
+Updated features 0.2.4:
 
 ```diff
-+ fixed critical error and implemented thread safety
-+ added "killall" command 
-+ improved reconnection fault tolerance
-+ fixed DDos methods
++ fixed a RW thread issue 
++ added custom method feature
++ added API webserver
++ optimized some codes
++ cleaned some codes
 ```
 
 
-Upcoming features:
+Upcoming features for 0.3.0:
 ```diff
-- more ddos methods
-- custom methods
-- Cloudflare Bypass
-- New Mirai Varient that works with terylene
+- docker support
+- clean my clusterfucked up codebase
+- add more methods (fr this time)
 ```
 
 # [ZeroC2 wiki](https://github.com/polymaster3313/terylene/wiki/Introduction) 
